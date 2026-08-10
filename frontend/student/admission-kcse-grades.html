@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCSE Results — Admission Process</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <style>
+        .admission-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .admission-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        .admission-step::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+        .admission-step:last-child::after {
+            display: none;
+        }
+        .admission-step.active .step-circle {
+            background: #1976d2;
+            color: #fff;
+        }
+        .admission-step.completed .step-circle {
+            background: #4caf50;
+            color: #fff;
+        }
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #666;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .step-label {
+            font-size: 0.875rem;
+            color: #666;
+        }
+        .admission-step.active .step-label {
+            color: #1976d2;
+            font-weight: 600;
+        }
+        .admission-step.completed .step-label {
+            color: #4caf50;
+        }
+        
+        /* Two Step UI */
+        #step-2 {
+            display: none;
+        }
+
+        .subjects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 1rem;
+        }
+        
+        .subject-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .subject-checkbox:hover {
+            background: #f5f5f5;
+        }
+        
+        .subject-checkbox input:checked + span {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .grades-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .grade-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+        .grade-item label {
+            flex: 1;
+            margin: 0;
+            font-weight: 600;
+            color: #333;
+        }
+        .grade-item select {
+            width: 100px;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .meta-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f7fc;
+            border-radius: 8px;
+            border: 1px solid #d0e3f0;
+        }
+        .form-group-custom label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #444;
+        }
+        .form-group-custom input, .form-group-custom select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">
+                Course Registration
+                <small>Admission Process</small>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/student/admission-academic-info.html" class="sidebar-nav-item">
+                <i class="bi bi-info-circle"></i> Academic Information
+            </a>
+            <a href="/student/admission-kcse-grades.html" class="sidebar-nav-item active">
+                <i class="bi bi-trophy"></i> KCSE Results
+            </a>
+            <a href="/student/admission-programmes.html" class="sidebar-nav-item">
+                <i class="bi bi-mortarboard"></i> Programme Selection
+            </a>
+            <a href="/student/admission-status.html" class="sidebar-nav-item">
+                <i class="bi bi-check-circle"></i> Application Status
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Top Navbar -->
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="navbar-title">KCSE Results</span>
+        </div>
+        <div class="navbar-right">
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            
+            <!-- Progress Steps -->
+            <div class="admission-progress">
+                <div class="admission-step completed">
+                    <div class="step-circle"><i class="bi bi-check"></i></div>
+                    <div class="step-label">Academic Info</div>
+                </div>
+                <div class="admission-step active">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">KCSE Results</div>
+                </div>
+                <div class="admission-step">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Programme</div>
+                </div>
+                <div class="admission-step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Status</div>
+                </div>
+            </div>
+
+            <div class="card">
+                
+                <!-- STEP 1: SELECT SUBJECTS -->
+                <div id="step-1">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="bi bi-card-checklist"></i> Step 1: Select KCSE Subjects
+                        </h2>
+                        <p style="color:var(--text-secondary); margin-top:5px; font-size:14px;">
+                            Select the subjects you took in KCSE. You must select between 1 and 8 subjects.
+                        </p>
+                    </div>
+                    <div class="card-body">
+                        <div id="subjects-grid" class="subjects-grid">
+                            <!-- Populated via JS -->
+                        </div>
+
+                        <div id="step-1-error" class="alert alert-error" style="display:none; margin-top:1.5rem;"></div>
+
+                        <div style="display:flex; gap:1rem; margin-top:2rem;">
+                            <a href="/student/admission-academic-info.html" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </a>
+                            <button type="button" class="btn btn-primary" onclick="goToStep2()">
+                                Next Step <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: ENTER GRADES -->
+                <div id="step-2">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="bi bi-trophy"></i> Step 2: Enter KCSE Grades
+                        </h2>
+                        <p style="color:var(--text-secondary); margin-top:5px; font-size:14px;">
+                            Provide your KCSE details and select the grade achieved for each subject.
+                        </p>
+                    </div>
+                    <div class="card-body">
+                        <form id="grades-form">
+                            <div class="meta-info-grid">
+                                <div class="form-group-custom">
+                                    <label>KCSE Year <span style="color:red;">*</span></label>
+                                    <input type="number" id="kcse_year" min="1990" max="2026" required placeholder="e.g. 2023">
+                                </div>
+                                <div class="form-group-custom">
+                                    <label>Index Number <span style="color:red;">*</span></label>
+                                    <input type="text" id="index_number" required placeholder="e.g. 12345678901">
+                                </div>
+                                <div class="form-group-custom">
+                                    <label>Mean Grade <span style="color:red;">*</span></label>
+                                    <select id="mean_grade" required>
+                                        <option value="">-- Select --</option>
+                                        <!-- populated dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+
+                            <h4 style="border-bottom: 1px solid #eee; padding-bottom:10px; margin-top:10px;">Subject Grades</h4>
+                            <div class="grades-grid" id="grades-grid">
+                                <!-- Populated dynamically based on step 1 selection -->
+                            </div>
+
+                            <div id="error-alert" class="alert alert-error" style="display:none; margin-top:1.5rem;"></div>
+                            <div id="success-alert" class="alert alert-success" style="display:none; margin-top:1.5rem;"></div>
+
+                            <div style="display:flex; gap:1rem; margin-top:2rem;">
+                                <button type="button" class="btn btn-secondary" onclick="goToStep1()">
+                                    <i class="bi bi-arrow-left"></i> Back to Subjects
+                                </button>
+                                <button type="submit" id="submit-btn" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i> Save Results &amp; Continue
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        const allSubjects = [
+            "Mathematics", "English", "Kiswahili", "Biology", "Chemistry", 
+            "Physics", "History and Government", "Geography", "CRE", "IRE", "HRE",
+            "Agriculture", "Business Studies", "Computer Studies", "Home Science",
+            "Art and Design", "Woodwork", "Metalwork", "French", "German", "Arabic", "Music"
+        ];
+        const allowedGrades = ["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "E"];
+        
+        let selectedSubjects = [];
+
+        // Initialize App
+        (async () => {
+            // Because api.requireAuth isn't in api.js globally, we use checkAuth/redirect logic
+            const user = await checkAuth();
+            if (!user || user.role !== 'student') {
+                window.location.href = '/auth/login.html';
+                return;
+            }
+            
+            // Build the layout
+            if(typeof buildFooter === 'function') buildFooter();
+            if(typeof upgradeSidebarBrand === 'function') upgradeSidebarBrand();
+            
+            const nameEl = document.getElementById('navbar-user-name');
+            const avatarEl = document.getElementById('navbar-avatar');
+            if (nameEl) nameEl.textContent = user.student_name || user.name || 'Student';
+            if (avatarEl) {
+                const nameStr = user.student_name || user.name || 'Student';
+                avatarEl.textContent = nameStr.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+            }
+            
+            renderSubjectCheckboxes();
+            renderMeanGradeOptions();
+        })();
+
+        // STEP 1: Render checkboxes
+        function renderSubjectCheckboxes() {
+            const grid = document.getElementById('subjects-grid');
+            allSubjects.forEach(sub => {
+                const label = document.createElement('label');
+                label.className = 'subject-checkbox';
+                label.innerHTML = `
+                    <input type="checkbox" value="${sub}" class="sub-cb">
+                    <span>${sub}</span>
+                `;
+                grid.appendChild(label);
+            });
+        }
+
+        function renderMeanGradeOptions() {
+            const select = document.getElementById('mean_grade');
+            allowedGrades.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.textContent = g;
+                select.appendChild(opt);
+            });
+        }
+
+        // STEP TRANSITIONS
+        function goToStep2() {
+            const checkboxes = document.querySelectorAll('.sub-cb:checked');
+            selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
+            
+            const err = document.getElementById('step-1-error');
+            if (selectedSubjects.length === 0) {
+                err.textContent = "Please select at least one subject.";
+                err.style.display = 'block';
+                return;
+            }
+            if (selectedSubjects.length > 8) {
+                err.textContent = "You can select a maximum of 8 subjects.";
+                err.style.display = 'block';
+                return;
+            }
+
+            err.style.display = 'none';
+            document.getElementById('step-1').style.display = 'none';
+            document.getElementById('step-2').style.display = 'block';
+            
+            renderGradeInputs();
+        }
+
+        function goToStep1() {
+            document.getElementById('step-2').style.display = 'none';
+            document.getElementById('step-1').style.display = 'block';
+        }
+
+        // STEP 2: Render selected grade dropdowns
+        function renderGradeInputs() {
+            const grid = document.getElementById('grades-grid');
+            grid.innerHTML = '';
+            
+            selectedSubjects.forEach(sub => {
+                const div = document.createElement('div');
+                div.className = 'grade-item';
+                
+                let opts = `<option value="">Select Grade</option>`;
+                allowedGrades.forEach(g => opts += `<option value="${g}">${g}</option>`);
+                
+                div.innerHTML = `
+                    <label>${sub}</label>
+                    <select id="grade_${sub.replace(/\s+/g, '_')}" required>
+                        ${opts}
+                    </select>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        // Submit form
+        document.getElementById('grades-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const errorAlert = document.getElementById('error-alert');
+            const successAlert = document.getElementById('success-alert');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            errorAlert.style.display = 'none';
+            successAlert.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Submitting...';
+
+            const payload = {
+                kcse_year: document.getElementById('kcse_year').value,
+                index_number: document.getElementById('index_number').value,
+                mean_grade: document.getElementById('mean_grade').value,
+                grades: {}
+            };
+
+            selectedSubjects.forEach(sub => {
+                payload.grades[sub] = document.getElementById(`grade_${sub.replace(/\s+/g, '_')}`).value;
+            });
+
+            try {
+                // Submit to backend
+                const data = await api.post('/student/kcse', payload);
+
+                if (data.success) {
+                    successAlert.textContent = data.message || "Saved successfully!";
+                    successAlert.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = '/student/admission-programmes.html';
+                    }, 1000);
+                } else {
+                    errorAlert.textContent = data.message || 'Failed to save.';
+                    errorAlert.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save Results & Continue';
+                }
+            } catch (err) {
+                errorAlert.textContent = err.message || 'Network error. Please try again.';
+                errorAlert.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save Results & Continue';
+            }
+        });
+    </script>
+</body>
+</html>

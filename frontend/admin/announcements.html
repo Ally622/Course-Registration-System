@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Announcements — Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+        <div class="sidebar-brand"><div class="sidebar-brand-icon">🛡️</div><div class="sidebar-brand-text">Admin Panel<small>Management Portal</small></div></div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-label">Overview</div>
+            <a href="/admin/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <div class="sidebar-section-label">Management</div>
+            <a href="/admin/students.html" class="sidebar-nav-item"><i class="bi bi-people"></i> Students</a>
+            <a href="/admin/lecturers.html" class="sidebar-nav-item"><i class="bi bi-person-video3"></i> Lecturers</a>
+            <a href="/admin/courses.html" class="sidebar-nav-item"><i class="bi bi-journal-bookmark"></i> Courses</a>
+            <a href="/admin/departments.html" class="sidebar-nav-item"><i class="bi bi-building"></i> Departments</a>
+            <a href="/admin/faculties.html" class="sidebar-nav-item"><i class="bi bi-building-fill"></i> Schools</a>
+            <div class="sidebar-section-label">Academic</div>
+            <a href="/admin/registrations.html" class="sidebar-nav-item"><i class="bi bi-clipboard-check"></i> Pending Approvals</a>
+            <a href="/admin/announcements.html" class="sidebar-nav-item active"><i class="bi bi-megaphone"></i> Announcements</a>
+            <div class="sidebar-section-label">Reports</div>
+            <a href="/admin/reports.html" class="sidebar-nav-item"><i class="bi bi-file-earmark-bar-graph"></i> Reports & Export</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;"><i class="bi bi-box-arrow-left"></i> Logout</a></div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Announcements</span>
+        </div>
+        <div class="navbar-right"><button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">A</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Admin</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Administrator</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div><h2><i class="bi bi-megaphone" style="color:var(--primary);"></i> Announcements</h2><p>Post and manage system-wide announcements</p></div>
+            <button class="btn-primary-custom" onclick="openModal()"><i class="bi bi-plus-circle"></i> New Announcement</button>
+        </div>
+
+        <div class="card-custom slide-up" id="ann-container">
+            <div class="loading-spinner"><div class="spinner"></div><span>Loading...</span></div>
+        </div>
+    </main>
+
+    <div id="ann-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:var(--border-radius);width:90%;max-width:520px;box-shadow:var(--shadow-lg);">
+            <div style="background:var(--primary-gradient);color:white;padding:16px 20px;border-radius:var(--border-radius) var(--border-radius) 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 id="modal-title" style="font-size:16px;font-weight:600;color:white;margin:0;"><i class="bi bi-megaphone"></i> New Announcement</h3>
+                <button onclick="closeModal()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:24px;">
+                <form id="ann-form">
+                    <input type="hidden" id="edit-ann-id">
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <div><label class="form-label-custom">Title *</label><input type="text" id="f-title" class="form-control-custom" placeholder="Announcement title" required></div>
+                        <div>
+                            <label class="form-label-custom">Target Audience</label>
+                            <select id="f-audience" class="form-control-custom">
+                                <option value="all">All</option>
+                                <option value="students">Students</option>
+                                <option value="admins">Admins</option>
+                                <option value="lecturers">Lecturers</option>
+                            </select>
+                        </div>
+                        <div><label class="form-label-custom">Message *</label><textarea id="f-message" class="form-control-custom" rows="4" placeholder="Announcement message..." required style="resize:vertical;"></textarea></div>
+                    </div>
+                    <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;">
+                        <button type="button" class="btn-outline-custom" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn-primary-custom" id="btn-save"><i class="bi bi-send"></i> Post</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        (async () => {
+            const user = await requireAuth('admin');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateAdminNavbar(user);
+            await loadAnnouncements();
+        })();
+
+        async function loadAnnouncements() {
+            showLoading('ann-container');
+            try {
+                const data = await api.get('/admin/announcements');
+                const anns = data.announcements || [];
+                if (anns.length === 0) { showEmpty('ann-container', 'bi-megaphone', 'No Announcements', 'Post your first announcement.'); return; }
+                document.getElementById('ann-container').innerHTML = anns.map(a => `
+                    <div style="padding:16px 20px;border-bottom:1px solid #f5f5f5;display:flex;justify-content:space-between;align-items:start;gap:12px;">
+                        <div style="flex:1;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                <strong style="font-size:14px;">${a.title}</strong>
+                                <span style="font-size:11px;background:var(--primary-lighter);color:var(--primary);padding:2px 8px;border-radius:12px;">${a.target_audience}</span>
+                            </div>
+                            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px;">${a.message}</p>
+                            <small style="color:var(--text-muted);">${formatDate(a.date_posted)}</small>
+                        </div>
+                        <button class="btn-danger-custom btn-sm-custom" onclick="deleteAnn(${a.announcement_id})"><i class="bi bi-trash"></i></button>
+                    </div>`).join('');
+            } catch { showToast('Failed to load announcements.', 'error'); }
+        }
+
+        function openModal() {
+            document.getElementById('ann-form').reset();
+            document.getElementById('edit-ann-id').value = '';
+            document.getElementById('ann-modal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('ann-modal').style.display = 'none'; }
+
+        document.getElementById('ann-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save');
+            btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Posting...';
+            const payload = {
+                title: document.getElementById('f-title').value.trim(),
+                message: document.getElementById('f-message').value.trim(),
+                target_audience: document.getElementById('f-audience').value
+            };
+            try {
+                await api.post('/admin/announcements', payload);
+                showToast('Announcement posted!', 'success');
+                closeModal(); await loadAnnouncements();
+            } catch (error) { showToast(error.message || 'Failed.', 'error'); }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-send"></i> Post'; }
+        });
+
+        async function deleteAnn(id) {
+            if (!confirm('Delete this announcement?')) return;
+            try { await api.delete(`/admin/announcements/${id}`); showToast('Deleted.', 'success'); await loadAnnouncements(); }
+            catch (error) { showToast(error.message || 'Failed.', 'error'); }
+        }
+
+        // populateAdminNavbar is defined in api.js
+    </script>
+</body>
+</html>

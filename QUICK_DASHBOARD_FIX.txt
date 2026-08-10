@@ -1,0 +1,136 @@
+================================================================================
+                    DASHBOARD ERROR - QUICK FIX
+================================================================================
+
+ERROR SHOWN:
+------------
+Error Loading Dashboard: 1054 (42S22): Unknown column 'academic_year' in 'field list'
+
+
+ROOT CAUSE:
+-----------
+Code tried to SELECT academic_year FROM semesters
+But academic_year is in academic_sessions table, not semesters!
+
+
+THE FIX (30 SECONDS):
+---------------------
+
+STEP 1: Stop Flask Server
+--------------------------
+In the terminal where Flask is running:
+Press: Ctrl + C
+
+
+STEP 2: Restart Flask Server
+-----------------------------
+python app.py
+
+Wait for: "Running on: http://127.0.0.1:5000"
+
+
+STEP 3: Refresh Browser
+------------------------
+Press F5 in your browser
+OR
+Close browser tab and login again
+
+
+EXPECTED RESULT:
+----------------
+✅ Dashboard loads successfully
+✅ Shows student information
+✅ Shows semester: "Semester 1 - 2026/2027 — 2026/2027"
+✅ Shows GPA
+✅ Shows registered units
+✅ Shows announcements
+
+
+WHAT WAS FIXED:
+---------------
+Updated 3 files to use correct SQL JOIN:
+
+student/routes.py - Line 107
+admin/routes.py - Line 76
+registration/pdf_generator.py - Line 64
+
+Changed:
+  SELECT semester_name, academic_year
+  FROM semesters
+  WHERE is_active = 1
+
+To:
+  SELECT sem.semester_name, sess.academic_year
+  FROM semesters sem
+  LEFT JOIN academic_sessions sess ON sem.session_id = sess.session_id
+  WHERE sem.is_active = 1
+
+
+IF IT STILL FAILS:
+------------------
+
+1. Check Flask Terminal
+   Should see: "Dashboard loaded successfully"
+   NOT: "Unknown column 'academic_year'"
+
+2. Verify Database
+   mysql -u root -p course_registration_system
+   
+   Run:
+   SELECT sem.semester_name, sess.academic_year
+   FROM semesters sem
+   LEFT JOIN academic_sessions sess ON sem.session_id = sess.session_id;
+   
+   Should return data without errors
+
+3. Check Browser Console (F12)
+   Should see: "Dashboard data loaded"
+   NOT: "Error loading dashboard"
+
+
+DATABASE STRUCTURE:
+-------------------
+academic_sessions
+  ├─ session_id (Primary Key)
+  └─ academic_year ✅ (Column is here!)
+
+semesters
+  ├─ semester_id (Primary Key)
+  └─ session_id (Foreign Key → academic_sessions)
+
+
+FILES MODIFIED:
+---------------
+✅ student/routes.py
+✅ admin/routes.py
+✅ registration/pdf_generator.py
+
+
+VERIFICATION:
+-------------
+[ ] Flask server restarts without errors
+[ ] Login works
+[ ] Dashboard loads
+[ ] No database errors
+[ ] Semester info shows correctly
+
+
+COMMON MISTAKES:
+----------------
+❌ Forgetting to restart Flask after code changes
+✅ Always restart Flask when Python files are modified
+
+❌ Browser cache showing old errors
+✅ Hard refresh with Ctrl+F5 or clear cache
+
+
+TL;DR:
+------
+The fix is already in the code.
+Just restart Flask:
+  python app.py
+
+Then refresh your browser.
+
+
+================================================================================

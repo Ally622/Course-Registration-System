@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Status — Admission</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">
+                Admission Portal
+                <small>Step 4 of 4</small>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/admission/academic-info.html" class="sidebar-nav-item">
+                <i class="bi bi-file-earmark-text"></i> Academic Information
+            </a>
+            <a href="/admission/kcse-grades.html" class="sidebar-nav-item">
+                <i class="bi bi-clipboard-data"></i> KCSE Results
+            </a>
+            <a href="/admission/programmes.html" class="sidebar-nav-item">
+                <i class="bi bi-book"></i> Programme Selection
+            </a>
+            <a href="/admission/status.html" class="sidebar-nav-item active">
+                <i class="bi bi-check-circle"></i> Application Status
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="navbar-title">Application Status</span>
+        </div>
+        <div class="navbar-right">
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2>Application Status</h2>
+            <p>Track your admission application progress</p>
+        </div>
+
+        <div id="status-container" style="max-width:800px;margin:0 auto;">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <span>Loading status...</span>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+
+            upgradeSidebarBrand();
+            populateNavbar(user);
+
+            await loadStatus();
+        })();
+
+        async function loadStatus() {
+            try {
+                const data = await api.get('/admission/status');
+                renderStatus(data);
+            } catch (error) {
+                showToast('Failed to load status.', 'error');
+                document.getElementById('status-container').innerHTML =
+                    '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Failed to load application status.</p></div>';
+            }
+        }
+
+        function renderStatus(data) {
+            const container = document.getElementById('status-container');
+
+            // Progress checklist
+            const steps = [
+                { label: 'Academic Information', complete: data.has_kcse_info, icon: 'file-earmark-text', link: '/admission/academic-info.html' },
+                { label: 'KCSE Grades', complete: data.has_kcse_grades, icon: 'clipboard-data', link: '/admission/kcse-grades.html' },
+                { label: 'Programme Selection', complete: data.has_application, icon: 'book', link: '/admission/programmes.html' },
+                { label: 'Application Submitted', complete: data.has_application, icon: 'send', link: null },
+            ];
+
+            let statusMessage = '';
+            let statusIcon = '';
+            let statusColor = '';
+            let actionButton = '';
+
+            if (data.is_approved) {
+                statusMessage = `🎉 Congratulations! Your application has been <strong>approved</strong>.`;
+                statusIcon = 'check-circle-fill';
+                statusColor = 'var(--success)';
+                actionButton = `
+                    <div style="margin-top:20px;">
+                        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">
+                            Your registration number: <strong style="font-size:18px;color:var(--primary);">${data.registration_number}</strong>
+                        </p>
+                        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+                            You can now log in using your registration number and password.
+                        </p>
+                        <a href="/student/dashboard.html" class="btn-primary-custom" style="text-decoration:none;">
+                            <i class="bi bi-grid-1x2"></i> Go to Dashboard
+                        </a>
+                    </div>
+                `;
+            } else if (data.application_status === 'rejected') {
+                statusMessage = `Your application has been <strong>rejected</strong>. Please contact the admissions office for more information.`;
+                statusIcon = 'x-circle-fill';
+                statusColor = 'var(--danger)';
+            } else if (data.application_status === 'pending') {
+                statusMessage = `Your application is currently <strong>under review</strong>. We will notify you once a decision has been made.`;
+                statusIcon = 'hourglass-split';
+                statusColor = 'var(--warning)';
+                actionButton = `
+                    <div style="margin-top:20px;">
+                        <p style="font-size:13px;color:var(--text-muted);">
+                            Please check back later or wait for an email notification.
+                        </p>
+                    </div>
+                `;
+            } else if (!data.has_application) {
+                statusMessage = `You have not submitted an application yet. Please complete the admission workflow.`;
+                statusIcon = 'info-circle';
+                statusColor = 'var(--info)';
+                actionButton = `
+                    <div style="margin-top:20px;">
+                        <a href="/admission/academic-info.html" class="btn-primary-custom" style="text-decoration:none;">
+                            <i class="bi bi-arrow-right-circle"></i> Start Application
+                        </a>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <!-- Progress Steps -->
+                <div class="card-custom fade-in" style="margin-bottom:24px;">
+                    <div class="card-header-custom">
+                        <i class="bi bi-list-check"></i> Application Progress
+                    </div>
+                    <div class="card-body-custom">
+                        ${steps.map(step => `
+                            <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid #f0f0f0;">
+                                <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+                                            background:${step.complete ? 'var(--success)' : '#e0e0e0'};color:white;flex-shrink:0;">
+                                    <i class="bi ${step.complete ? 'bi-check-lg' : 'bi-' + step.icon}" style="font-size:16px;"></i>
+                                </div>
+                                <div style="flex:1;">
+                                    <div style="font-weight:600;font-size:14px;color:${step.complete ? 'var(--success)' : 'var(--text-muted)'};">
+                                        ${step.label}
+                                    </div>
+                                </div>
+                                ${step.link && !step.complete ? `<a href="${step.link}" class="btn-outline-custom btn-sm-custom" style="text-decoration:none;">
+                                    Complete
+                                </a>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Status Card -->
+                <div class="card-custom fade-in">
+                    <div class="card-header-custom" style="background:${statusColor};color:white;">
+                        <i class="bi ${statusIcon}"></i> Application Status
+                    </div>
+                    <div class="card-body-custom" style="text-align:center;padding:40px 20px;">
+                        <div style="font-size:48px;color:${statusColor};margin-bottom:16px;">
+                            <i class="bi ${statusIcon}"></i>
+                        </div>
+                        <p style="font-size:16px;line-height:1.6;color:var(--text-secondary);">
+                            ${statusMessage}
+                        </p>
+                        ${actionButton}
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+
+    <style>
+        .card-custom:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</body>
+</html>

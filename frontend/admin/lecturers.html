@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecturers — Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+        <div class="sidebar-brand"><div class="sidebar-brand-icon">🛡️</div><div class="sidebar-brand-text">Admin Panel<small>Management Portal</small></div></div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-label">Overview</div>
+            <a href="/admin/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <div class="sidebar-section-label">Management</div>
+            <a href="/admin/students.html" class="sidebar-nav-item"><i class="bi bi-people"></i> Students</a>
+            <a href="/admin/lecturers.html" class="sidebar-nav-item active"><i class="bi bi-person-video3"></i> Lecturers</a>
+            <a href="/admin/courses.html" class="sidebar-nav-item"><i class="bi bi-journal-bookmark"></i> Courses</a>
+            <a href="/admin/departments.html" class="sidebar-nav-item"><i class="bi bi-building"></i> Departments</a>
+            <a href="/admin/faculties.html" class="sidebar-nav-item"><i class="bi bi-building-fill"></i> Schools</a>
+            <div class="sidebar-section-label">Academic</div>
+            <a href="/admin/registrations.html" class="sidebar-nav-item"><i class="bi bi-clipboard-check"></i> Pending Approvals</a>
+            <a href="/admin/announcements.html" class="sidebar-nav-item"><i class="bi bi-megaphone"></i> Announcements</a>
+            <div class="sidebar-section-label">Reports</div>
+            <a href="/admin/reports.html" class="sidebar-nav-item"><i class="bi bi-file-earmark-bar-graph"></i> Reports & Export</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;"><i class="bi bi-box-arrow-left"></i> Logout</a></div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Lecturers</span>
+        </div>
+        <div class="navbar-right"><button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">A</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Admin</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Administrator</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div><h2><i class="bi bi-person-video3" style="color:var(--primary);"></i> Lecturers</h2><p>Manage academic staff</p></div>
+            <button class="btn-primary-custom" onclick="openModal()"><i class="bi bi-plus-circle"></i> Add Lecturer</button>
+        </div>
+
+        <div class="card-custom slide-up" id="lecturers-container">
+            <div class="loading-spinner"><div class="spinner"></div><span>Loading...</span></div>
+        </div>
+    </main>
+
+    <div id="lecturer-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:var(--border-radius);width:90%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);">
+            <div style="background:var(--primary-gradient);color:white;padding:16px 20px;border-radius:var(--border-radius) var(--border-radius) 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 id="modal-title" style="font-size:16px;font-weight:600;color:white;margin:0;"><i class="bi bi-plus-circle"></i> Add Lecturer</h3>
+                <button onclick="closeModal()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:24px;">
+                <form id="lecturer-form">
+                    <input type="hidden" id="edit-lecturer-id">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                        <div><label class="form-label-custom">Full Name *</label><input type="text" id="f-name" class="form-control-custom" placeholder="e.g. Dr. Jane Doe" required></div>
+                        <div><label class="form-label-custom">Title</label><input type="text" id="f-title" class="form-control-custom" placeholder="e.g. Dr., Prof., Mr."></div>
+                        <div><label class="form-label-custom">Email</label><input type="email" id="f-email" class="form-control-custom" placeholder="lecturer@university.ac.ke"></div>
+                        <div><label class="form-label-custom">Phone</label><input type="tel" id="f-phone" class="form-control-custom" placeholder="0712345678"></div>
+                        <div style="grid-column:1/-1;"><label class="form-label-custom">Department</label><select id="f-dept" class="form-control-custom"><option value="">Select department</option></select></div>
+                    </div>
+                    <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;">
+                        <button type="button" class="btn-outline-custom" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn-primary-custom" id="btn-save"><i class="bi bi-check-circle"></i> Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        let editMode = false;
+
+        (async () => {
+            const user = await requireAuth('admin');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateAdminNavbar(user);
+            await Promise.all([loadLecturers(), loadDepartments()]);
+        })();
+
+        async function loadDepartments() {
+            try {
+                const data = await api.get('/admin/departments');
+                const sel = document.getElementById('f-dept');
+                data.departments.forEach(d => sel.innerHTML += `<option value="${d.department_id}">${d.department_name}</option>`);
+            } catch {}
+        }
+
+        async function loadLecturers() {
+            showLoading('lecturers-container');
+            try {
+                const data = await api.get('/admin/lecturers');
+                const lecturers = data.lecturers || [];
+                if (lecturers.length === 0) { showEmpty('lecturers-container', 'bi-person-x', 'No Lecturers', 'Add your first lecturer.'); return; }
+                document.getElementById('lecturers-container').innerHTML = `
+                    <div style="overflow-x:auto;">
+                    <table class="table-custom">
+                        <thead><tr><th>#</th><th>Name</th><th>Title</th><th>Email</th><th>Phone</th><th>Department</th><th>Actions</th></tr></thead>
+                        <tbody>${lecturers.map((l, i) => `<tr>
+                            <td>${i + 1}</td>
+                            <td><strong>${l.lecturer_name}</strong></td>
+                            <td>${l.title || '—'}</td>
+                            <td style="font-size:12px;">${l.email || '—'}</td>
+                            <td style="font-size:12px;">${l.phone || '—'}</td>
+                            <td style="font-size:12px;">${l.department_name || 'N/A'}</td>
+                            <td>
+                                <button class="btn-outline-custom btn-sm-custom" onclick="editLecturer(${l.lecturer_id})"><i class="bi bi-pencil"></i></button>
+                                <button class="btn-danger-custom btn-sm-custom" onclick="deleteLecturer(${l.lecturer_id},'${l.lecturer_name}')"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                    </table></div>`;
+            } catch { showToast('Failed to load lecturers.', 'error'); }
+        }
+
+        function openModal(isEdit = false) {
+            editMode = isEdit;
+            if (!isEdit) { document.getElementById('lecturer-form').reset(); document.getElementById('edit-lecturer-id').value = ''; document.getElementById('modal-title').innerHTML = '<i class="bi bi-plus-circle"></i> Add Lecturer'; }
+            document.getElementById('lecturer-modal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('lecturer-modal').style.display = 'none'; }
+
+        async function editLecturer(id) {
+            try {
+                const data = await api.get('/admin/lecturers');
+                const l = data.lecturers.find(x => x.lecturer_id === id);
+                if (!l) return;
+                document.getElementById('edit-lecturer-id').value = l.lecturer_id;
+                document.getElementById('f-name').value = l.lecturer_name;
+                document.getElementById('f-title').value = l.title || '';
+                document.getElementById('f-email').value = l.email || '';
+                document.getElementById('f-phone').value = l.phone || '';
+                document.getElementById('f-dept').value = l.department_id || '';
+                document.getElementById('modal-title').innerHTML = '<i class="bi bi-pencil"></i> Edit Lecturer';
+                openModal(true);
+            } catch { showToast('Failed.', 'error'); }
+        }
+
+        document.getElementById('lecturer-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save');
+            btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+            const lecturerId = document.getElementById('edit-lecturer-id').value;
+            const payload = {
+                lecturer_name: document.getElementById('f-name').value.trim(),
+                title: document.getElementById('f-title').value.trim(),
+                email: document.getElementById('f-email').value.trim(),
+                phone: document.getElementById('f-phone').value.trim(),
+                department_id: document.getElementById('f-dept').value || null
+            };
+            try {
+                if (editMode && lecturerId) { await api.put(`/admin/lecturers/${lecturerId}`, payload); showToast('Lecturer updated!', 'success'); }
+                else { await api.post('/admin/lecturers', payload); showToast('Lecturer created!', 'success'); }
+                closeModal(); await loadLecturers();
+            } catch (error) { showToast(error.message || 'Save failed.', 'error'); }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle"></i> Save'; }
+        });
+
+        async function deleteLecturer(id, name) {
+            if (!confirm(`Delete lecturer "${name}"?`)) return;
+            try { await api.delete(`/admin/lecturers/${id}`); showToast('Deleted.', 'success'); await loadLecturers(); }
+            catch (error) { showToast(error.message || 'Failed.', 'error'); }
+        }
+
+        // populateAdminNavbar is defined in api.js
+    </script>
+</body>
+</html>

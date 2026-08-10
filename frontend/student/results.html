@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results & Grades — Course Registration System</title>
+    <meta name="description" content="View your academic results, unit grades, GPA and performance summary.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+        <div class="sidebar-brand"><div class="sidebar-brand-icon">🎓</div><div class="sidebar-brand-text">Course Registration<small>Student Portal</small></div></div>
+        <nav class="sidebar-nav">
+            <a href="/student/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="/student/my-courses.html" class="sidebar-nav-item"><i class="bi bi-bookmark-check"></i> My Units</a>
+            <a href="/student/results.html" class="sidebar-nav-item active"><i class="bi bi-graph-up"></i> Results</a>
+            <a href="/student/timetable.html" class="sidebar-nav-item"><i class="bi bi-calendar-week"></i> Timetable</a>
+            <a href="/student/history.html" class="sidebar-nav-item"><i class="bi bi-clock-history"></i> History</a>
+            <a href="/student/profile.html" class="sidebar-nav-item"><i class="bi bi-person-circle"></i> Profile</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;"><i class="bi bi-box-arrow-left"></i> Logout</a></div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Results & Grades</span>
+        </div>
+        <div class="navbar-right">
+            <button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-notification" title="Notifications" onclick="window.location.href='/student/notifications.html'" style="cursor:pointer;"><i class="bi bi-bell"></i></div>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2><i class="bi bi-graph-up" style="color:var(--primary);"></i> Results &amp; Grades</h2>
+            <p>Your academic performance and unit grades</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;" class="fade-in">
+            <div class="stat-card" style="border-left-color:var(--primary);">
+                <div class="stat-number" id="cumulative-gpa" style="color:var(--primary);">-</div>
+                <div class="stat-label">Cumulative GPA</div>
+            </div>
+            <div class="stat-card" style="border-left-color:var(--success);">
+                <div class="stat-number" id="average-marks" style="color:var(--success);">-</div>
+                <div class="stat-label">Average Marks (%)</div>
+            </div>
+            <div class="stat-card" style="border-left-color:var(--info);">
+                <div class="stat-number" id="total-units-graded" style="color:var(--info);">-</div>
+                <div class="stat-label">Units Graded</div>
+            </div>
+            <div class="stat-card" style="border-left-color:var(--warning);">
+                <div class="stat-number" id="overall-remarks" style="font-size:13px;color:var(--warning);">-</div>
+                <div class="stat-label">Academic Standing</div>
+            </div>
+        </div>
+
+        <!-- Semester GPA Bars -->
+        <div class="card-custom fade-in" style="margin-bottom:24px;" id="semester-gpa-section">
+            <div class="card-header-custom"><i class="bi bi-bar-chart"></i> Semester GPA Breakdown</div>
+            <div class="card-body-custom" id="semester-gpa-container">
+                <div class="loading-spinner"><div class="spinner"></div><span>Loading...</span></div>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="card-custom slide-up">
+            <div class="card-header-custom"><i class="bi bi-table"></i> Detailed Unit Results</div>
+            <div id="results-container">
+                <div class="loading-spinner"><div class="spinner"></div><span>Loading results...</span></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateNavbar(user);
+
+            try {
+                const data = await api.get('/student/results');
+                const results = data.results || [];
+
+                // Summary cards
+                document.getElementById('cumulative-gpa').textContent =
+                    data.cumulative_gpa ? parseFloat(data.cumulative_gpa).toFixed(2) : '0.00';
+                document.getElementById('average-marks').textContent =
+                    data.average_marks ? data.average_marks.toFixed(1) + '%' : '0%';
+                document.getElementById('total-units-graded').textContent = data.total_units || results.length;
+                document.getElementById('overall-remarks').textContent = data.overall_remarks || 'N/A';
+
+                // Semester GPA bars
+                const semGpas = data.semester_gpas || [];
+                if (semGpas.length > 0) {
+                    document.getElementById('semester-gpa-container').innerHTML = semGpas.map(s => `
+                        <div style="margin-bottom:16px;">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                                <span style="font-size:13px;font-weight:600;">${s.semester_name} — ${s.academic_year}</span>
+                                <span style="font-size:13px;font-weight:700;color:var(--primary);">${parseFloat(s.semester_gpa).toFixed(2)}</span>
+                            </div>
+                            <div style="background:#ECEFF1;border-radius:8px;height:10px;overflow:hidden;">
+                                <div style="background:var(--primary-gradient);height:100%;border-radius:8px;width:${Math.min(parseFloat(s.semester_gpa)/4.0*100, 100).toFixed(0)}%;transition:width 1s ease;"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('semester-gpa-section').style.display = 'none';
+                }
+
+                // Results table
+                if (results.length === 0) {
+                    showEmpty('results-container', 'bi-journal-x', 'No Results Yet',
+                        'Your unit results will appear here once grades are published.');
+                    return;
+                }
+
+                document.getElementById('results-container').innerHTML = `
+                    <div style="overflow-x:auto;">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Unit Code</th>
+                                <th>Unit Name</th>
+                                <th>CAT</th>
+                                <th>Exam</th>
+                                <th>Total</th>
+                                <th>Grade</th>
+                                <th>Points</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${results.map((r, i) => {
+                                const remarkClass = r.remarks === 'Distinction' ? 'badge-approved' :
+                                    r.remarks === 'Credit' ? 'badge-approved' :
+                                    r.remarks === 'Pass' ? 'badge-pending' : 'badge-rejected';
+                                const gradeColor = r.grade === 'A' ? 'var(--success)' :
+                                    r.grade === 'B' ? 'var(--info)' :
+                                    r.grade === 'C' ? 'var(--warning)' : 'var(--danger)';
+                                return `
+                                <tr>
+                                    <td style="color:var(--text-muted);font-size:13px;">${i + 1}</td>
+                                    <td><strong style="color:var(--primary);">${r.unit_code || r.course_code}</strong></td>
+                                    <td style="font-weight:500;">${r.unit_name || r.course_name}</td>
+                                    <td>${r.cat_marks ?? '—'}</td>
+                                    <td>${r.exam_marks ?? '—'}</td>
+                                    <td><strong style="font-size:15px;">${r.total_marks ?? '—'}</strong></td>
+                                    <td><span style="font-weight:800;font-size:17px;color:${gradeColor};">${r.grade || '—'}</span></td>
+                                    <td>${r.grade_points ?? '—'}</td>
+                                    <td><span class="badge-status ${remarkClass}">${r.remarks || '—'}</span></td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:var(--primary-lighter);">
+                                <td colspan="5" style="font-weight:700;color:var(--primary);padding:12px 16px;">Overall Average</td>
+                                <td colspan="4" style="font-weight:800;font-size:15px;color:var(--primary);padding:12px 16px;">
+                                    ${data.average_marks ? data.average_marks.toFixed(1) + '%' : '—'}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    </div>
+                `;
+
+            } catch (error) {
+                showToast('Failed to load results: ' + (error.message || 'Unknown error'), 'error');
+                showEmpty('results-container', 'bi-exclamation-triangle', 'Could Not Load Results', error.message || 'Please try again.');
+            }
+        })();
+    </script>
+</body>
+</html>

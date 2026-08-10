@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applications — Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+        <div class="sidebar-brand"><div class="sidebar-brand-icon">🛡️</div><div class="sidebar-brand-text">Admin Panel<small>Management Portal</small></div></div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-label">Overview</div>
+            <a href="/admin/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <div class="sidebar-section-label">Management</div>
+            <a href="/admin/students.html" class="sidebar-nav-item"><i class="bi bi-people"></i> Students</a>
+            <a href="/admin/lecturers.html" class="sidebar-nav-item"><i class="bi bi-person-video3"></i> Lecturers</a>
+            <a href="/admin/courses.html" class="sidebar-nav-item"><i class="bi bi-journal-bookmark"></i> Courses</a>
+            <a href="/admin/departments.html" class="sidebar-nav-item"><i class="bi bi-building"></i> Departments</a>
+            <a href="/admin/faculties.html" class="sidebar-nav-item"><i class="bi bi-building-fill"></i> Schools</a>
+            <div class="sidebar-section-label">Academic</div>
+            <a href="/admin/applications.html" class="sidebar-nav-item active"><i class="bi bi-file-earmark-person"></i> Applications</a>
+            <a href="/admin/registrations.html" class="sidebar-nav-item"><i class="bi bi-clipboard-check"></i> Course Registrations</a>
+            <a href="/admin/announcements.html" class="sidebar-nav-item"><i class="bi bi-megaphone"></i> Announcements</a>
+            <div class="sidebar-section-label">Reports</div>
+            <a href="/admin/reports.html" class="sidebar-nav-item"><i class="bi bi-file-earmark-bar-graph"></i> Reports & Export</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;"><i class="bi bi-box-arrow-left"></i> Logout</a></div>
+    </aside>
+
+    
+
+        <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title" id="page-navbar-title">Admin Portal</span>
+        </div>
+        <div class="navbar-right">
+            <button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">A</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Admin</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Administrator</div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2><i class="bi bi-file-earmark-person" style="color:var(--primary);"></i> Admission Applications</h2>
+            <p>Approve or reject student university admission applications</p>
+        </div>
+
+        <!-- Filters -->
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;" class="fade-in">
+            <select class="form-control-custom" id="status-filter" onchange="loadApplications()" style="max-width:160px;">
+                <option value="">All Statuses</option>
+                <option value="pending" selected>Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+
+        <div class="card-custom slide-up" id="applications-container">
+            <div class="loading-spinner"><div class="spinner"></div><span>Loading applications...</span></div>
+        </div>
+    </main>
+
+    <!-- Reject Reason Modal -->
+    <div id="reject-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:var(--border-radius);width:90%;max-width:420px;box-shadow:var(--shadow-lg);">
+            <div style="background:var(--danger);color:white;padding:16px 20px;border-radius:var(--border-radius) var(--border-radius) 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="font-size:16px;font-weight:600;color:white;margin:0;"><i class="bi bi-x-circle"></i> Reject Application</h3>
+                <button onclick="closeRejectModal()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:24px;">
+                <input type="hidden" id="reject-app-id">
+                <label class="form-label-custom">Reason for Rejection</label>
+                <textarea id="reject-reason" class="form-control-custom" rows="3" placeholder="Did not meet minimum requirements..." style="resize:vertical;"></textarea>
+                <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                    <button class="btn-outline-custom" onclick="closeRejectModal()">Cancel</button>
+                    <button class="btn-danger-custom" onclick="confirmReject()"><i class="bi bi-x-circle"></i> Confirm Reject</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KCSE Details Modal -->
+    <div id="kcse-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:var(--border-radius);width:90%;max-width:500px;box-shadow:var(--shadow-lg); max-height: 90vh; display: flex; flex-direction: column;">
+            <div style="background:var(--primary);color:white;padding:16px 20px;border-radius:var(--border-radius) var(--border-radius) 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="font-size:16px;font-weight:600;color:white;margin:0;"><i class="bi bi-award"></i> KCSE Details</h3>
+                <button onclick="closeKcseModal()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:24px; overflow-y: auto;" id="kcse-details-content">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        // Store global reference to applications to display in modal
+        let currentApplications = [];
+
+        (async () => {
+            const user = await requireAuth('admin');
+            if (!user) return;
+
+            upgradeSidebarBrand();
+            buildFooter();
+            populateAdminNavbar(user);
+            await loadApplications();
+        })();
+
+        async function loadApplications() {
+            const status = document.getElementById('status-filter').value;
+            let url = '/admin/applications';
+            if (status) {
+                url += `?status=${status}`;
+            }
+
+            showLoading('applications-container');
+            try {
+                const data = await api.get(url);
+                const apps = data.applications || [];
+                currentApplications = apps;
+
+                if (apps.length === 0) {
+                    if (status === 'pending') {
+                        document.getElementById('applications-container').innerHTML = '';
+                    } else {
+                        showEmpty('applications-container', 'bi-file-earmark-x', 'No Applications Found', 'No applications match the selected filter.');
+                    }
+                    return;
+                }
+
+                document.getElementById('applications-container').innerHTML = `
+                    <div style="overflow-x:auto;">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>Applicant</th>
+                                <th>Programme</th>
+                                <th>KCSE Year</th>
+                                <th>Mean Grade</th>
+                                <th>Date Applied</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${apps.map((a, i) => `<tr>
+                                <td>
+                                    <div style="font-weight:600;font-size:13px;text-transform:uppercase;">${a.student_name}</div>
+                                    <div style="font-size:11px;color:var(--text-muted);">${a.index_number || ('CS/2026/' + String(a.application_id).padStart(4, '0'))}</div>
+                                    <div style="font-size:11px;color:var(--text-muted);">${a.phone || '0113965222'}</div>
+                                </td>
+                                <td>
+                                    <strong style="color:var(--primary);text-transform:uppercase;">${a.programme_prefix}</strong>
+                                    <div style="font-size:11px;color:var(--text-muted);">${a.programme_name}</div>
+                                </td>
+                                <td style="font-size:13px;">${a.kcse_year}</td>
+                                <td>
+                                    <strong style="color:var(--success); font-size:14px;">${a.mean_grade}</strong>
+                                    <div><a href="#" onclick="viewKcseDetails(${a.application_id}); return false;" style="font-size:11px; color:var(--primary); text-decoration:none;">View Subjects</a></div>
+                                </td>
+                                <td style="font-size:12px;">${formatDate(a.applied_at)}</td>
+                                <td>${statusBadge(a.status)}</td>
+                                <td>
+                                    ${a.status === 'pending' ? `
+                                        <div style="display:flex; flex-direction:column; gap:8px;">
+                                            <button class="btn-success-custom" style="padding:6px 12px; border-radius:6px;" onclick="approve(${a.application_id})"><i class="bi bi-check-circle"></i></button>
+                                            <button class="btn-danger-custom" style="padding:6px 12px; border-radius:6px;" onclick="openRejectModal(${a.application_id})"><i class="bi bi-x-circle"></i></button>
+                                        </div>
+                                    ` : '<span style="color:var(--text-muted);font-size:12px;">—</span>'}
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table></div>`;
+            } catch (error) {
+                showToast('Failed to load applications.', 'error');
+            }
+        }
+
+        function compareGrades(studentGrade, reqGrade) {
+            const grades = { 'A': 12, 'A-': 11, 'B+': 10, 'B': 9, 'B-': 8, 'C+': 7, 'C': 6, 'C-': 5, 'D+': 4, 'D': 3, 'D-': 2, 'E': 1 };
+            const sVal = grades[studentGrade] || 0;
+            const rVal = grades[reqGrade] || 0;
+            return sVal >= rVal;
+        }
+
+        function viewKcseDetails(appId) {
+            const app = currentApplications.find(a => a.application_id === appId);
+            if (!app) return;
+            
+            let reqs = null;
+            if (app.requirements) {
+                try {
+                    reqs = typeof app.requirements === 'string' ? JSON.parse(app.requirements) : app.requirements;
+                } catch (e) { console.error('Failed to parse requirements', e); }
+            }
+
+            // Map student grades for easy lookup
+            const studentGradesMap = {};
+            if (app.kcse_grades) {
+                app.kcse_grades.forEach(g => { studentGradesMap[g.subject] = g.grade; });
+            }
+
+            let requirementsHtml = '';
+            if (reqs) {
+                const meanReq = reqs.mean_grade;
+                const meetsMean = compareGrades(app.mean_grade, meanReq);
+                const meanColor = meetsMean ? 'var(--success)' : 'var(--danger)';
+                const meanIcon = meetsMean ? 'bi-check-circle' : 'bi-x-circle';
+
+                requirementsHtml += `
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px; margin-bottom:16px;">
+                        <h5 style="margin:0 0 8px 0; font-size:13px; font-weight:600; color:#334155;">Course Requirements Comparison</h5>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #e2e8f0;">
+                            <span style="font-size:12px;">Mean Grade (Req: <strong>${meanReq}</strong>)</span>
+                            <span style="color:${meanColor}; font-size:12px; font-weight:600;">
+                                <i class="bi ${meanIcon}"></i> ${app.mean_grade} (${meetsMean ? 'Meets' : 'Does Not Meet'})
+                            </span>
+                        </div>
+                `;
+
+                if (reqs.subjects) {
+                    for (const [sub, reqGrade] of Object.entries(reqs.subjects)) {
+                        const sGrade = studentGradesMap[sub] || 'E'; // E if not taken
+                        const meetsSub = compareGrades(sGrade, reqGrade);
+                        const subColor = meetsSub ? 'var(--success)' : 'var(--danger)';
+                        const subIcon = meetsSub ? 'bi-check-circle' : 'bi-x-circle';
+
+                        requirementsHtml += `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #e2e8f0;">
+                                <span style="font-size:12px;">${sub} (Req: <strong>${reqGrade}</strong>)</span>
+                                <span style="color:${subColor}; font-size:12px; font-weight:600;">
+                                    <i class="bi ${subIcon}"></i> ${sGrade} (${meetsSub ? 'Meets' : 'Does Not Meet'})
+                                </span>
+                            </div>
+                        `;
+                    }
+                }
+                requirementsHtml += `</div>`;
+            } else {
+                requirementsHtml = `<div style="background:#fef3c7; color:#92400e; padding:10px; border-radius:6px; font-size:12px; margin-bottom:16px;">No specific requirements set for this course.</div>`;
+            }
+
+            const gradesHtml = app.kcse_grades && app.kcse_grades.length > 0 
+                ? app.kcse_grades.map(g => `
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0;">
+                        <span style="font-size:13px;">${g.subject}</span>
+                        <strong style="font-size:14px;">${g.grade}</strong>
+                    </div>
+                `).join('')
+                : '<div style="color:var(--text-muted); font-size:13px;">No subjects found.</div>';
+
+            document.getElementById('kcse-details-content').innerHTML = `
+                <div style="margin-bottom: 16px;">
+                    <h4 style="font-size:14px; margin:0 0 4px 0;">${app.student_name}</h4>
+                    <div style="font-size:12px; color:var(--text-secondary);">KCSE Year: ${app.kcse_year} | Index: ${app.index_number || 'N/A'}</div>
+                    <div style="font-size:12px; color:var(--text-secondary);">Mean Grade: <strong style="color:var(--success);">${app.mean_grade}</strong></div>
+                </div>
+                ${requirementsHtml}
+                <h5 style="font-size:13px; font-weight:600; margin:0 0 8px 0; border-bottom:2px solid #e2e8f0; padding-bottom:4px;">All Submitted Subjects</h5>
+                ${gradesHtml}
+            `;
+            
+            document.getElementById('kcse-modal').style.display = 'flex';
+        }
+
+
+        function closeKcseModal() {
+            document.getElementById('kcse-modal').style.display = 'none';
+        }
+
+        async function approve(id) {
+            if (!confirm("Are you sure you want to approve this admission? A registration number will be generated.")) return;
+            
+            try {
+                await api.put(`/admin/applications/${id}/approve`);
+                showToast('Application approved successfully.', 'success');
+                await loadApplications();
+            } catch (error) {
+                showToast(error.message || 'Failed.', 'error');
+            }
+        }
+
+        function openRejectModal(id) {
+            document.getElementById('reject-app-id').value = id;
+            document.getElementById('reject-reason').value = '';
+            document.getElementById('reject-modal').style.display = 'flex';
+        }
+        function closeRejectModal() { document.getElementById('reject-modal').style.display = 'none'; }
+
+        async function confirmReject() {
+            const id = document.getElementById('reject-app-id').value;
+            const reason = document.getElementById('reject-reason').value.trim();
+            try {
+                await api.put(`/admin/applications/${id}/reject`, { reason });
+                showToast('Application rejected.', 'success');
+                closeRejectModal();
+                await loadApplications();
+            } catch (error) { showToast(error.message || 'Failed.', 'error'); }
+        }
+
+        // populateAdminNavbar is defined in api.js
+    </script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable — Course Registration System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">Course Registration<small>Student Portal</small></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/student/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            
+            <a href="/student/my-courses.html" class="sidebar-nav-item"><i class="bi bi-bookmark-check"></i> My Units</a>
+            <a href="/student/results.html" class="sidebar-nav-item"><i class="bi bi-graph-up"></i> Results</a>
+            <a href="/student/timetable.html" class="sidebar-nav-item active"><i class="bi bi-calendar-week"></i> Timetable</a>
+            <a href="/student/history.html" class="sidebar-nav-item"><i class="bi bi-clock-history"></i> History</a>
+            <a href="/student/profile.html" class="sidebar-nav-item"><i class="bi bi-person-circle"></i> Profile</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Timetable</span>
+        </div>
+        <div class="navbar-right"><button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-notification" title="Notifications"
+                 onclick="window.location.href='/student/notifications.html'" style="cursor:pointer;">
+                <i class="bi bi-bell"></i>
+            </div>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2><i class="bi bi-calendar-week" style="color:var(--primary);"></i> Weekly Timetable</h2>
+            <p>Your class schedule for the current semester</p>
+        </div>
+
+        <!-- Conflict Warning -->
+        <div id="conflict-alert" style="display:none;" class="fade-in">
+            <div style="background:var(--warning-light);border:1px solid var(--warning);border-radius:var(--border-radius-sm);padding:14px 16px;margin-bottom:20px;display:flex;gap:10px;align-items:start;">
+                <i class="bi bi-exclamation-triangle-fill" style="color:var(--warning);font-size:18px;margin-top:2px;"></i>
+                <div>
+                    <strong>Timetable Conflicts Detected</strong>
+                    <div id="conflict-details" style="font-size:13px;margin-top:4px;color:var(--text-secondary);"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Toggle -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;" class="fade-in">
+            <button class="btn-primary-custom btn-sm-custom" id="btn-week" onclick="setView('week')">
+                <i class="bi bi-grid-3x3"></i> Weekly Grid
+            </button>
+            <button class="btn-outline-custom btn-sm-custom" id="btn-list" onclick="setView('list')">
+                <i class="bi bi-list-ul"></i> List View
+            </button>
+        </div>
+
+        <!-- Weekly Grid View -->
+        <div id="view-week" class="card-custom slide-up" style="overflow-x:auto;">
+            <div id="timetable-grid">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <span>Loading timetable...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- List View -->
+        <div id="view-list" class="card-custom slide-up" style="display:none;">
+            <div id="timetable-list">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <span>Loading timetable...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        let timetableData = [];
+        const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const COLORS = ['#C2185B', '#1976D2', '#388E3C', '#F57C00', '#7B1FA2', '#00838F', '#D32F2F'];
+
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateNavbar(user);
+            await Promise.all([loadTimetable(), checkConflicts()]);
+        })();
+
+        async function loadTimetable() {
+            try {
+                const data = await api.get('/student/timetable');
+                timetableData = data.timetable || [];
+                renderWeekView();
+                renderListView();
+            } catch (error) {
+                showToast('Failed to load timetable.', 'error');
+            }
+        }
+
+        async function checkConflicts() {
+            try {
+                const data = await api.get('/student/timetable/conflicts');
+                if (data.has_conflicts && data.conflicts.length > 0) {
+                    document.getElementById('conflict-alert').style.display = 'block';
+                    document.getElementById('conflict-details').innerHTML =
+                        data.conflicts.map(c =>
+                            `<div style="margin-top:4px;">⚠ <strong>${c.course_1}</strong> vs <strong>${c.course_2}</strong> — ${c.day} (${c.time_1} / ${c.time_2})</div>`
+                        ).join('');
+                }
+            } catch {}
+        }
+
+        function renderWeekView() {
+            if (timetableData.length === 0) {
+                document.getElementById('timetable-grid').innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <h4>No Timetable Yet</h4>
+                        <p>Your approved courses will appear here once the timetable is assigned.</p>
+                    </div>`;
+                return;
+            }
+
+            // Build course colour map
+            const courseColors = {};
+            let colorIdx = 0;
+            timetableData.forEach(entry => {
+                if (!courseColors[entry.course_code]) {
+                    courseColors[entry.course_code] = COLORS[colorIdx % COLORS.length];
+                    colorIdx++;
+                }
+            });
+
+            // Group by day
+            const byDay = {};
+            DAYS.forEach(d => byDay[d] = []);
+            timetableData.forEach(entry => {
+                if (byDay[entry.day]) byDay[entry.day].push(entry);
+            });
+
+            const colWidth = 180;
+            const cols = DAYS.map(day => `<th style="min-width:${colWidth}px;text-align:center;padding:10px 6px;">${day}</th>`).join('');
+
+            const maxRows = Math.max(...DAYS.map(d => byDay[d].length), 1);
+            let rows = '';
+            for (let r = 0; r < maxRows; r++) {
+                const cells = DAYS.map(day => {
+                    const entry = byDay[day][r];
+                    if (!entry) return '<td></td>';
+                    const color = courseColors[entry.course_code];
+                    return `<td style="padding:6px;">
+                        <div style="background:${color};color:white;border-radius:8px;padding:10px 12px;font-size:12px;">
+                            <div style="font-weight:700;font-size:13px;">${entry.course_code}</div>
+                            <div style="opacity:0.9;margin-top:2px;">${entry.course_name}</div>
+                            <div style="margin-top:6px;opacity:0.85;display:flex;align-items:center;gap:4px;">
+                                <i class="bi bi-clock"></i> ${formatTime(entry.start_time)} – ${formatTime(entry.end_time)}
+                            </div>
+                            <div style="opacity:0.85;display:flex;align-items:center;gap:4px;">
+                                <i class="bi bi-geo-alt"></i> ${entry.venue || 'TBA'}
+                            </div>
+                            ${entry.lecturer_name ? `<div style="opacity:0.8;display:flex;align-items:center;gap:4px;margin-top:2px;"><i class="bi bi-person"></i> ${entry.lecturer_name}</div>` : ''}
+                        </div>
+                    </td>`;
+                }).join('');
+                rows += `<tr>${cells}</tr>`;
+            }
+
+            document.getElementById('timetable-grid').innerHTML = `
+                <table style="width:100%;border-collapse:separate;border-spacing:4px;">
+                    <thead>
+                        <tr style="background:var(--primary-gradient);">
+                            ${DAYS.map(d => `<th style="color:white;font-weight:600;font-size:13px;padding:12px 8px;text-align:center;">${d}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        }
+
+        function renderListView() {
+            if (timetableData.length === 0) {
+                document.getElementById('timetable-list').innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <h4>No Timetable Yet</h4>
+                        <p>Your approved courses will appear here.</p>
+                    </div>`;
+                return;
+            }
+
+            // Group by day
+            const byDay = {};
+            DAYS.forEach(d => byDay[d] = []);
+            timetableData.forEach(e => { if (byDay[e.day]) byDay[e.day].push(e); });
+
+            let html = '';
+            DAYS.forEach(day => {
+                if (byDay[day].length === 0) return;
+                html += `<div style="padding:16px 20px 0;">
+                    <div style="font-weight:700;color:var(--primary);font-size:14px;margin-bottom:8px;border-bottom:2px solid var(--primary-lighter);padding-bottom:4px;">
+                        <i class="bi bi-calendar3"></i> ${day}
+                    </div>`;
+                byDay[day].forEach(e => {
+                    html += `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid #f5f5f5;">
+                        <div style="width:80px;text-align:center;background:var(--primary-lighter);border-radius:6px;padding:6px;font-size:12px;font-weight:600;color:var(--primary);">
+                            ${formatTime(e.start_time)}<br><span style="color:var(--text-muted);">–</span><br>${formatTime(e.end_time)}
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;font-size:14px;">${e.course_code} — ${e.course_name}</div>
+                            <div style="color:var(--text-secondary);font-size:12px;margin-top:2px;">
+                                <i class="bi bi-geo-alt"></i> ${e.venue || 'TBA'}
+                                ${e.lecturer_name ? `&nbsp;&nbsp;<i class="bi bi-person"></i> ${e.lecturer_name}` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+            });
+
+            document.getElementById('timetable-list').innerHTML = html;
+        }
+
+        function setView(view) {
+            if (view === 'week') {
+                document.getElementById('view-week').style.display = 'block';
+                document.getElementById('view-list').style.display = 'none';
+                document.getElementById('btn-week').className = 'btn-primary-custom btn-sm-custom';
+                document.getElementById('btn-list').className = 'btn-outline-custom btn-sm-custom';
+            } else {
+                document.getElementById('view-week').style.display = 'none';
+                document.getElementById('view-list').style.display = 'block';
+                document.getElementById('btn-week').className = 'btn-outline-custom btn-sm-custom';
+                document.getElementById('btn-list').className = 'btn-primary-custom btn-sm-custom';
+            }
+        }
+
+        function formatTime(timeStr) {
+            if (!timeStr) return '';
+            const [h, m] = timeStr.split(':');
+            const hour = parseInt(h);
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${m} ${period}`;
+        }
+    </script>
+</body>
+</html>

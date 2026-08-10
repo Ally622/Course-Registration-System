@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic History — Course Registration System</title>
+    <meta name="description" content="View your academic progression, completed units by year and semester, and performance trends.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">Course Registration<small>Student Portal</small></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/student/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="/student/my-courses.html" class="sidebar-nav-item"><i class="bi bi-bookmark-check"></i> My Units</a>
+            <a href="/student/results.html" class="sidebar-nav-item"><i class="bi bi-graph-up"></i> Results</a>
+            <a href="/student/timetable.html" class="sidebar-nav-item"><i class="bi bi-calendar-week"></i> Timetable</a>
+            <a href="/student/history.html" class="sidebar-nav-item active"><i class="bi bi-clock-history"></i> History</a>
+            <a href="/student/profile.html" class="sidebar-nav-item"><i class="bi bi-person-circle"></i> Profile</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Academic History</span>
+        </div>
+        <div class="navbar-right">
+            <button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-notification" title="Notifications"
+                 onclick="window.location.href='/student/notifications.html'" style="cursor:pointer;">
+                <i class="bi bi-bell"></i>
+            </div>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2><i class="bi bi-clock-history" style="color:var(--primary);"></i> Academic History</h2>
+            <p>Your academic progression — completed units by year and semester</p>
+        </div>
+
+        <!-- Summary bar -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;" class="fade-in" id="summary-bar">
+        </div>
+
+        <!-- History accordion -->
+        <div id="history-container" class="fade-in">
+            <div class="loading-spinner" style="padding:60px 20px;">
+                <div class="spinner"></div>
+                <span>Loading academic history...</span>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateNavbar(user);
+            await loadHistory();
+        })();
+
+        async function loadHistory() {
+            try {
+                const data = await api.get('/student/academic-history');
+                const history = data.history || [];
+                const overallAvg = data.overall_average || 0;
+                const programmeName = data.programme_name || 'N/A';
+
+                // Summary bar
+                const bar = document.getElementById('summary-bar');
+                const totalUnits = history.reduce((sum, yr) =>
+                    sum + yr.semesters.reduce((s2, sem) => s2 + sem.units.length, 0), 0);
+                const totalYears = history.length;
+
+                bar.innerHTML = `
+                    <div class="stat-card" style="border-left-color:var(--primary);">
+                        <div class="stat-number" style="color:var(--primary);">${totalUnits}</div>
+                        <div class="stat-label">Units Completed</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color:var(--success);">
+                        <div class="stat-number" style="color:var(--success);">${overallAvg}%</div>
+                        <div class="stat-label">Overall Average</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color:var(--info);">
+                        <div class="stat-number" style="color:var(--info);">${totalYears}</div>
+                        <div class="stat-label">Years Studied</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color:var(--warning);">
+                        <div style="font-size:13px;font-weight:600;color:var(--warning);padding:8px 0;">${programmeName}</div>
+                        <div class="stat-label">Programme</div>
+                    </div>
+                `;
+
+                if (history.length === 0) {
+                    document.getElementById('history-container').innerHTML = `
+                        <div class="card-custom">
+                            <div class="empty-state" style="padding:60px 20px;">
+                                <i class="bi bi-clock-history"></i>
+                                <h4>No Academic History Yet</h4>
+                                <p>Your completed unit results will appear here once grades are published.</p>
+                            </div>
+                        </div>`;
+                    return;
+                }
+
+                // Render each academic year
+                document.getElementById('history-container').innerHTML = history.map((yr, yi) => `
+                    <div class="card-custom" style="margin-bottom:20px;">
+                        <!-- Year header -->
+                        <div style="padding:18px 24px;background:var(--primary-gradient);color:white;border-radius:var(--border-radius) var(--border-radius) 0 0;
+                                    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"
+                             onclick="toggleYear(${yi})" style="cursor:pointer;">
+                            <div style="display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="toggleYear(${yi})">
+                                <i class="bi bi-mortarboard" style="font-size:20px;"></i>
+                                <div>
+                                    <div style="font-size:16px;font-weight:700;">${yr.label}</div>
+                                    <div style="font-size:12px;opacity:0.85;">Academic progression</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:16px;cursor:pointer;" onclick="toggleYear(${yi})">
+                                <div style="background:rgba(255,255,255,0.2);padding:6px 16px;border-radius:8px;text-align:center;">
+                                    <div style="font-size:18px;font-weight:700;">${yr.year_average}%</div>
+                                    <div style="font-size:11px;opacity:0.85;">Year Average</div>
+                                </div>
+                                <i class="bi bi-chevron-down" id="yr-chevron-${yi}" style="transition:transform 0.3s;font-size:16px;"></i>
+                            </div>
+                        </div>
+
+                        <!-- Semesters inside the year -->
+                        <div id="yr-body-${yi}">
+                            ${yr.semesters.map((sem, si) => `
+                                <div style="border-bottom:1px solid #f0f0f0;">
+                                    <!-- Semester sub-header -->
+                                    <div style="padding:12px 24px;background:#FAFAFA;display:flex;justify-content:space-between;align-items:center;
+                                                border-left:4px solid var(--primary);">
+                                        <div>
+                                            <span style="font-weight:700;font-size:14px;color:var(--primary);">
+                                                <i class="bi bi-calendar3"></i> ${sem.label}
+                                            </span>
+                                            <span style="margin-left:12px;font-size:12px;color:var(--text-muted);">${sem.academic_year || ''}</span>
+                                        </div>
+                                        <div style="display:flex;gap:12px;align-items:center;">
+                                            <span style="background:var(--primary-lighter);color:var(--primary);padding:3px 12px;border-radius:12px;font-size:12px;font-weight:600;">
+                                                ${sem.units.length} units
+                                            </span>
+                                            <span style="font-weight:700;color:var(--success);font-size:14px;">
+                                                Avg: ${sem.average}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Units table -->
+                                    <div style="overflow-x:auto;">
+                                    <table class="table-custom" style="border-radius:0;margin:0;">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Unit Code</th>
+                                                <th>Unit Name</th>
+                                                <th>Credits</th>
+                                                <th>CAT</th>
+                                                <th>Exam</th>
+                                                <th>Total</th>
+                                                <th>Grade</th>
+                                                <th>Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${sem.units.map((u, ui) => {
+                                                const gc = u.grade === 'A' ? 'var(--success)' :
+                                                           u.grade === 'B' ? 'var(--info)' :
+                                                           u.grade === 'C' ? 'var(--warning)' : 'var(--danger)';
+                                                const rc = u.remarks === 'Distinction' || u.remarks === 'Credit' ? 'badge-approved' :
+                                                           u.remarks === 'Pass' ? 'badge-pending' : 'badge-rejected';
+                                                return `
+                                                <tr>
+                                                    <td style="color:var(--text-muted);font-size:12px;">${ui+1}</td>
+                                                    <td><strong style="color:var(--primary);">${u.unit_code}</strong></td>
+                                                    <td style="font-weight:500;">${u.unit_name}</td>
+                                                    <td style="font-size:12px;">${u.credit_hours}</td>
+                                                    <td>${u.cat_marks ?? '—'}</td>
+                                                    <td>${u.exam_marks ?? '—'}</td>
+                                                    <td><strong>${u.total_marks ?? '—'}</strong></td>
+                                                    <td><span style="font-weight:800;font-size:16px;color:${gc};">${u.grade || '—'}</span></td>
+                                                    <td><span class="badge-status ${rc}">${u.remarks || '—'}</span></td>
+                                                </tr>`;
+                                            }).join('')}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr style="background:var(--success-light);">
+                                                <td colspan="6" style="font-weight:700;color:var(--success);padding:10px 16px;">Semester Average</td>
+                                                <td colspan="3" style="font-weight:800;font-size:14px;color:var(--success);padding:10px 16px;">${sem.average}%</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                    </div>
+                                </div>
+                            `).join('')}
+
+                            <!-- Year summary footer -->
+                            <div style="padding:14px 24px;background:var(--primary-lighter);display:flex;justify-content:space-between;align-items:center;
+                                        border-radius:0 0 var(--border-radius) var(--border-radius);">
+                                <span style="font-weight:600;color:var(--primary-dark);font-size:14px;">
+                                    <i class="bi bi-bar-chart"></i> ${yr.label} Performance
+                                </span>
+                                <span style="font-weight:800;font-size:16px;color:var(--primary);">
+                                    Year Average: ${yr.year_average}%
+                                    &nbsp;
+                                    <span style="font-size:12px;font-weight:500;color:var(--text-secondary);">
+                                        (${getYearClass(yr.year_average)})
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Overall performance footer
+                document.getElementById('history-container').insertAdjacentHTML('beforeend', `
+                    <div class="card-custom" style="border:2px solid var(--primary);">
+                        <div style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                            <div>
+                                <div style="font-size:16px;font-weight:700;color:var(--primary);">
+                                    <i class="bi bi-trophy"></i> Overall Academic Performance
+                                </div>
+                                <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">
+                                    ${programmeName}
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:28px;font-weight:800;color:var(--primary);">${overallAvg}%</div>
+                                <div style="font-size:13px;color:var(--text-secondary);">${getYearClass(overallAvg)}</div>
+                            </div>
+                        </div>
+                        <!-- Progress bar -->
+                        <div style="padding:0 24px 20px;">
+                            <div style="background:#ECEFF1;border-radius:8px;height:12px;overflow:hidden;">
+                                <div style="background:var(--primary-gradient);height:100%;border-radius:8px;
+                                            width:${Math.min(overallAvg, 100)}%;transition:width 1.5s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+
+            } catch (error) {
+                showToast('Failed to load history.', 'error');
+                document.getElementById('history-container').innerHTML = `
+                    <div class="card-custom">
+                        <div class="empty-state" style="padding:60px 20px;">
+                            <i class="bi bi-exclamation-circle"></i>
+                            <h4>Could not load academic history</h4>
+                            <p>${error.message || 'Please try again later.'}</p>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function toggleYear(yi) {
+            const body = document.getElementById(`yr-body-${yi}`);
+            const chevron = document.getElementById(`yr-chevron-${yi}`);
+            if (!body) return;
+            const hidden = body.style.display === 'none';
+            body.style.display = hidden ? 'block' : 'none';
+            if (chevron) chevron.style.transform = hidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+        }
+
+        function getYearClass(avg) {
+            if (avg >= 70) return 'First Class';
+            if (avg >= 60) return 'Second Class Upper';
+            if (avg >= 50) return 'Second Class Lower';
+            if (avg >= 40) return 'Pass';
+            return 'Below Pass';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programme Selection — Admission Process</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <style>
+        .admission-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .admission-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        .admission-step::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+        .admission-step:last-child::after {
+            display: none;
+        }
+        .admission-step.active .step-circle {
+            background: #1976d2;
+            color: #fff;
+        }
+        .admission-step.completed .step-circle {
+            background: #4caf50;
+            color: #fff;
+        }
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #666;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .step-label {
+            font-size: 0.875rem;
+            color: #666;
+        }
+        .admission-step.active .step-label {
+            color: #1976d2;
+            font-weight: 600;
+        }
+        .admission-step.completed .step-label {
+            color: #4caf50;
+        }
+        .school-section {
+            margin-bottom: 2rem;
+        }
+        .school-header {
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            color: #fff;
+            padding: 1rem 1.5rem;
+            border-radius: 8px 8px 0 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        .programmes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+        .programme-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fff;
+        }
+        .programme-card:hover {
+            border-color: #1976d2;
+            box-shadow: 0 4px 8px rgba(25, 118, 210, 0.2);
+            transform: translateY(-2px);
+        }
+        .programme-card.selected {
+            border-color: #1976d2;
+            background: #e3f2fd;
+            box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+        }
+        .programme-card h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            color: #1976d2;
+        }
+        .programme-card .department {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        .programme-card .description {
+            font-size: 0.875rem;
+            color: #555;
+            line-height: 1.5;
+        }
+        .selected-indicator {
+            display: inline-block;
+            background: #4caf50;
+            color: #fff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">
+                Course Registration
+                <small>Admission Process</small>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/student/admission-academic-info.html" class="sidebar-nav-item">
+                <i class="bi bi-info-circle"></i> Academic Information
+            </a>
+            <a href="/student/admission-kcse-grades.html" class="sidebar-nav-item">
+                <i class="bi bi-trophy"></i> KCSE Results
+            </a>
+            <a href="/student/admission-programmes.html" class="sidebar-nav-item active">
+                <i class="bi bi-mortarboard"></i> Programme Selection
+            </a>
+            <a href="/student/admission-status.html" class="sidebar-nav-item">
+                <i class="bi bi-check-circle"></i> Application Status
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Top Navbar -->
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="navbar-title">Programme Selection</span>
+        </div>
+        <div class="navbar-right">
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            
+            <!-- Progress Steps -->
+            <div class="admission-progress">
+                <div class="admission-step completed">
+                    <div class="step-circle"><i class="bi bi-check"></i></div>
+                    <div class="step-label">Academic Info</div>
+                </div>
+                <div class="admission-step completed">
+                    <div class="step-circle"><i class="bi bi-check"></i></div>
+                    <div class="step-label">KCSE Results</div>
+                </div>
+                <div class="admission-step active">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Programme</div>
+                </div>
+                <div class="admission-step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Status</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="bi bi-mortarboard"></i> Choose Your Programme
+                    </h2>
+                    <p>Select ONE programme you wish to apply for. Click a card to select it.</p>
+                </div>
+                <div class="card-body">
+                    <div id="programmes-container">
+                        <div style="text-align:center;padding:2rem;">
+                            <i class="bi bi-hourglass-split" style="font-size:2rem;color:#1976d2;"></i>
+                            <p>Loading programmes...</p>
+                        </div>
+                    </div>
+
+                    <div id="error-alert" class="alert alert-error" style="display:none; margin-top:1rem;"></div>
+                    <div id="success-alert" class="alert alert-success" style="display:none; margin-top:1rem;"></div>
+
+                    <div style="display:flex; gap:1rem; margin-top:2rem;">
+                        <a href="/student/admission-kcse-grades.html" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </a>
+                        <button id="submit-btn" class="btn btn-primary" disabled>
+                            <i class="bi bi-check-circle"></i> Submit Application
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/auth.js"></script>
+    <script>
+        let selectedProgrammeId = null;
+
+        // Load programmes with better error handling
+        async function loadProgrammes() {
+            const container = document.getElementById('programmes-container');
+            
+            try {
+                console.log('[Programmes] Fetching from /admission/programmes...');
+                
+                const response = await fetch('/admission/programmes', {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                console.log('[Programmes] Response status:', response.status, response.statusText);
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    console.error('[Programmes] Non-JSON response received:', contentType);
+                    const text = await response.text();
+                    console.error('[Programmes] Response text:', text.substring(0, 200));
+                    throw new Error('Server returned non-JSON response. Please check if you are logged in.');
+                }
+                
+                const data = await response.json();
+                console.log('[Programmes] Response data:', data);
+                
+                if (!response.ok) {
+                    throw new Error(data.message || `Server error: ${response.status}`);
+                }
+                
+                if (data.success && data.schools) {
+                    console.log(`[Programmes] Successfully loaded ${data.total_programmes || data.schools.length} programmes`);
+                    renderProgrammes(data.schools);
+                } else {
+                    throw new Error(data.message || 'Failed to load programmes');
+                }
+                
+            } catch (err) {
+                console.error('[Programmes] Error loading programmes:', err);
+                console.error('[Programmes] Error stack:', err.stack);
+                
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>Failed to load programmes</strong><br>
+                        Error: ${err.message}<br>
+                        <small>Please check the browser console (F12) for details, or try refreshing the page.</small><br>
+                        <button onclick="loadProgrammes()" class="btn btn-secondary" style="margin-top:1rem;">
+                            <i class="bi bi-arrow-clockwise"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderProgrammes(schools) {
+            const container = document.getElementById('programmes-container');
+            container.innerHTML = '';
+
+            if (schools.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:#666;">No programmes available at this time.</p>';
+                return;
+            }
+
+            schools.forEach(school => {
+                const section = document.createElement('div');
+                section.className = 'school-section';
+
+                const header = document.createElement('div');
+                header.className = 'school-header';
+                header.textContent = school.school_name;
+
+                const grid = document.createElement('div');
+                grid.className = 'programmes-grid';
+
+                school.programmes.forEach(prog => {
+                    const card = document.createElement('div');
+                    card.className = 'programme-card';
+                    card.dataset.programmeId = prog.programme_id;
+                    card.onclick = () => selectProgramme(prog.programme_id);
+
+                    card.innerHTML = `
+                        <h4>${prog.programme_name}</h4>
+                        <div class="department">${prog.department_name}</div>
+                        <div class="description">${prog.description || 'A comprehensive programme designed to equip students with essential skills and knowledge.'}</div>
+                        <span class="selected-indicator" style="display:none;">✓ Selected</span>
+                    `;
+
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(header);
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+        }
+
+        function selectProgramme(programmeId) {
+            // Deselect all
+            document.querySelectorAll('.programme-card').forEach(card => {
+                card.classList.remove('selected');
+                card.querySelector('.selected-indicator').style.display = 'none';
+            });
+
+            // Select clicked
+            const card = document.querySelector(`[data-programme-id="${programmeId}"]`);
+            if (card) {
+                card.classList.add('selected');
+                card.querySelector('.selected-indicator').style.display = 'inline-block';
+                selectedProgrammeId = programmeId;
+                document.getElementById('submit-btn').disabled = false;
+            }
+        }
+
+        // Submit application
+        document.getElementById('submit-btn').addEventListener('click', async function() {
+            if (!selectedProgrammeId) {
+                alert('Please select a programme');
+                return;
+            }
+
+            const errorAlert = document.getElementById('error-alert');
+            const successAlert = document.getElementById('success-alert');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            errorAlert.style.display = 'none';
+            successAlert.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Submitting...';
+
+            try {
+                const response = await fetch('/admission/apply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ programme_id: selectedProgrammeId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successAlert.textContent = data.message;
+                    successAlert.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = '/student/admission-status.html';
+                    }, 1500);
+                } else {
+                    errorAlert.textContent = data.message || 'Failed to submit application';
+                    errorAlert.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Application';
+                }
+            } catch (err) {
+                errorAlert.textContent = 'Network error. Please try again.';
+                errorAlert.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Application';
+            }
+        });
+
+        // Initialize
+        loadUserInfo();
+        loadProgrammes();
+    </script>
+</body>
+</html>

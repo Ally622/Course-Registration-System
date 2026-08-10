@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Information — Admission Process</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <style>
+        .admission-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .admission-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        .admission-step::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+        .admission-step:last-child::after {
+            display: none;
+        }
+        .admission-step.active .step-circle {
+            background: #1976d2;
+            color: #fff;
+        }
+        .admission-step.completed .step-circle {
+            background: #4caf50;
+            color: #fff;
+        }
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #666;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .step-label {
+            font-size: 0.875rem;
+            color: #666;
+        }
+        .admission-step.active .step-label {
+            color: #1976d2;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">
+                Course Registration
+                <small>Admission Process</small>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/student/admission-academic-info.html" class="sidebar-nav-item active">
+                <i class="bi bi-info-circle"></i> Academic Information
+            </a>
+            <a href="/student/admission-kcse-grades.html" class="sidebar-nav-item">
+                <i class="bi bi-trophy"></i> KCSE Results
+            </a>
+            <a href="/student/admission-programmes.html" class="sidebar-nav-item">
+                <i class="bi bi-mortarboard"></i> Programme Selection
+            </a>
+            <a href="/student/admission-status.html" class="sidebar-nav-item">
+                <i class="bi bi-check-circle"></i> Application Status
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Top Navbar -->
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="navbar-title">Academic Information</span>
+        </div>
+        <div class="navbar-right">
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            
+            <!-- Progress Steps -->
+            <div class="admission-progress">
+                <div class="admission-step active">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Academic Info</div>
+                </div>
+                <div class="admission-step">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">KCSE Results</div>
+                </div>
+                <div class="admission-step">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Programme</div>
+                </div>
+                <div class="admission-step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Status</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="bi bi-info-circle"></i> Academic Information
+                    </h2>
+                    <p>Please provide your KCSE examination details</p>
+                </div>
+                <div class="card-body">
+                    <form id="academic-form">
+                        <div class="form-group">
+                            <label for="kcse_year">KCSE Examination Year *</label>
+                            <input type="number" id="kcse_year" name="kcse_year" class="form-control" 
+                                   min="2000" max="2030" required placeholder="e.g., 2023">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="index_number">KCSE Index Number (Optional)</label>
+                            <input type="text" id="index_number" name="index_number" class="form-control" 
+                                   placeholder="e.g., 12345678901/2023">
+                            <small class="form-text">Format: 11 digits / year</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mean_grade">Mean Grade *</label>
+                            <select id="mean_grade" name="mean_grade" class="form-control" required>
+                                <option value="">Select your mean grade</option>
+                                <option value="A">A</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B">B</option>
+                                <option value="B-">B-</option>
+                                <option value="C+">C+</option>
+                                <option value="C">C</option>
+                                <option value="C-">C-</option>
+                                <option value="D+">D+</option>
+                                <option value="D">D</option>
+                            </select>
+                        </div>
+
+                        <div id="error-alert" class="alert alert-error" style="display:none;"></div>
+                        <div id="success-alert" class="alert alert-success" style="display:none;"></div>
+
+                        <div style="display:flex; gap:1rem; margin-top:2rem;">
+                            <button type="submit" id="submit-btn" class="btn btn-primary">
+                                <i class="bi bi-arrow-right"></i> Save &amp; Continue
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/auth.js"></script>
+    <script>
+        // Load existing data
+        async function loadExistingData() {
+            try {
+                const response = await fetch('/admission/academic-info', {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success && data.info) {
+                    document.getElementById('kcse_year').value = data.info.kcse_year || '';
+                    document.getElementById('index_number').value = data.info.index_number || '';
+                    document.getElementById('mean_grade').value = data.info.mean_grade || '';
+                }
+            } catch (err) {
+                console.error('Failed to load existing data:', err);
+            }
+        }
+
+        // Form submission
+        document.getElementById('academic-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const errorAlert = document.getElementById('error-alert');
+            const successAlert = document.getElementById('success-alert');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            errorAlert.style.display = 'none';
+            successAlert.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+
+            const formData = {
+                kcse_year: parseInt(document.getElementById('kcse_year').value),
+                index_number: document.getElementById('index_number').value.trim() || null,
+                mean_grade: document.getElementById('mean_grade').value
+            };
+
+            try {
+                const response = await fetch('/admission/academic-info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successAlert.textContent = data.message;
+                    successAlert.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = '/student/admission-kcse-grades.html';
+                    }, 1000);
+                } else {
+                    errorAlert.textContent = data.message || 'Failed to save information';
+                    errorAlert.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-arrow-right"></i> Save &amp; Continue';
+                }
+            } catch (err) {
+                errorAlert.textContent = 'Network error. Please try again.';
+                errorAlert.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-arrow-right"></i> Save &amp; Continue';
+            }
+        });
+
+        // Initialize
+        loadUserInfo();
+        loadExistingData();
+    </script>
+</body>
+</html>

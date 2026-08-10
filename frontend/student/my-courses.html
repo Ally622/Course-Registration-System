@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Units — Course Registration System</title>
+    <meta name="description" content="View all units for your registered programme this semester.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">Course Registration<small>Student Portal</small></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/student/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="/student/my-courses.html" class="sidebar-nav-item active"><i class="bi bi-bookmark-check"></i> My Units</a>
+            <a href="/student/results.html" class="sidebar-nav-item"><i class="bi bi-graph-up"></i> Results</a>
+            <a href="/student/timetable.html" class="sidebar-nav-item"><i class="bi bi-calendar-week"></i> Timetable</a>
+            <a href="/student/history.html" class="sidebar-nav-item"><i class="bi bi-clock-history"></i> History</a>
+            <a href="/student/profile.html" class="sidebar-nav-item"><i class="bi bi-person-circle"></i> Profile</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">My Units</span>
+        </div>
+        <div class="navbar-right">
+            <button class="navbar-logout-btn" onclick="logout()" title="Logout">
+                <i class="bi bi-box-arrow-left"></i><span>Logout</span>
+            </button>
+            <div class="navbar-notification" title="Notifications"
+                 onclick="window.location.href='/student/notifications.html'" style="cursor:pointer;">
+                <i class="bi bi-bell"></i>
+            </div>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Programme Banner -->
+        <div class="page-header fade-in" style="background:var(--primary-gradient);color:white;padding:24px 32px;border-radius:var(--border-radius);margin-bottom:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <h2 style="color:white;margin-bottom:4px;font-size:20px;">
+                        <i class="bi bi-mortarboard"></i> My Units
+                    </h2>
+                    <p style="opacity:0.9;font-size:14px;margin:0;">
+                        Programme: <strong id="programme-name">Loading...</strong>
+                        &nbsp;|&nbsp; Year <strong id="year-of-study">—</strong>
+                        &nbsp;|&nbsp; Semester <strong id="semester-number">—</strong>
+                    </p>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <div style="background:rgba(255,255,255,0.2);padding:8px 20px;border-radius:8px;text-align:center;">
+                        <div style="font-size:22px;font-weight:700;" id="total-units">—</div>
+                        <div style="font-size:11px;opacity:0.85;">Total Units</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.2);padding:8px 20px;border-radius:8px;text-align:center;">
+                        <div style="font-size:22px;font-weight:700;" id="total-credits">—</div>
+                        <div style="font-size:11px;opacity:0.85;">Credit Hours</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Units Table -->
+        <div class="card-custom slide-up">
+            <div class="card-header-custom">
+                <i class="bi bi-journal-bookmark-fill"></i> Semester Units
+            </div>
+            <div id="units-container">
+                <div class="loading-spinner" style="padding:40px 20px;">
+                    <div class="spinner"></div>
+                    <span>Loading your units...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateNavbar(user);
+            await loadMyUnits();
+        })();
+
+        async function loadMyUnits() {
+            try {
+                const data = await api.get('/student/my-units');
+
+                // Update programme banner
+                document.getElementById('programme-name').textContent = data.programme_name || 'N/A';
+                document.getElementById('year-of-study').textContent = data.year_of_study || '1';
+                document.getElementById('semester-number').textContent = data.semester_number || '1';
+                document.getElementById('total-units').textContent = data.total_units || 0;
+                document.getElementById('total-credits').textContent = data.total_credits || 0;
+
+                const units = data.units || [];
+
+                if (units.length === 0) {
+                    document.getElementById('units-container').innerHTML = `
+                        <div class="empty-state" style="padding:60px 20px;">
+                            <i class="bi bi-journal-x"></i>
+                            <h4>No Units Found</h4>
+                            <p>No units are available for your programme and year yet.<br>
+                            Contact the registrar if you believe this is an error.</p>
+                        </div>`;
+                    return;
+                }
+
+                document.getElementById('units-container').innerHTML = `
+                    <div style="overflow-x:auto;">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Unit Code</th>
+                                <th>Unit Name</th>
+                                <th>Credits</th>
+                                <th>Lecturer</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${units.map((u, i) => `
+                                <tr>
+                                    <td style="color:var(--text-muted);font-size:13px;">${i + 1}</td>
+                                    <td><strong style="color:var(--primary);font-size:14px;">${u.unit_code}</strong></td>
+                                    <td style="font-weight:500;">${u.unit_name}</td>
+                                    <td>
+                                        <span style="background:var(--primary-lighter);color:var(--primary);padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">
+                                            ${u.credit_hours} cr
+                                        </span>
+                                    </td>
+                                    <td style="font-size:13px;">${u.lecturer_name || '<span style="color:var(--text-muted)">TBA</span>'}</td>
+                                    <td style="font-size:12px;color:var(--text-secondary);max-width:280px;">
+                                        ${u.description ? u.description.substring(0, 100) + (u.description.length > 100 ? '…' : '') : '—'}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    </div>
+                `;
+
+            } catch (error) {
+                showToast('Failed to load units: ' + (error.message || 'Unknown error'), 'error');
+                document.getElementById('units-container').innerHTML = `
+                    <div class="empty-state" style="padding:60px 20px;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <h4>Could not load units</h4>
+                        <p>${error.message || 'Please try again later.'}</p>
+                    </div>`;
+            }
+        }
+    </script>
+</body>
+</html>

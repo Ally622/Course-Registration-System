@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — Course Registration System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/auth.css">
+</head>
+
+<body>
+
+    <div class="auth-wrapper">
+        <!-- Left Brand Panel -->
+        <div class="auth-brand-panel">
+            <div class="auth-brand-logo">🎓</div>
+            <h1 class="auth-brand-title">Join Us</h1>
+            <p class="auth-brand-subtitle">
+                Create your student account to start registering courses
+                and managing your academic progress.
+            </p>
+        </div>
+
+        <!-- Right Form Panel -->
+        <div class="auth-form-panel">
+            <div class="auth-form-container">
+                <h2 class="auth-form-title">Register</h2>
+                <p class="auth-form-subtitle">Create your student account</p>
+
+                <div class="auth-error-message" id="error-message">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <span id="error-text"></span>
+                </div>
+
+                <form id="register-form" novalidate>
+                    <!-- Name -->
+                    <div class="auth-form-group">
+                        <label for="name">Full Name</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-person"></i>
+                            <input type="text" id="name" placeholder="full name" required>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="auth-form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-envelope"></i>
+                            <input type="email" id="email" placeholder=" email" required>
+                        </div>
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="auth-form-group">
+                        <label for="phone">Phone Number</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-telephone"></i>
+                            <input type="tel" id="phone" placeholder="your active phone no">
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="auth-form-group">
+                        <label for="password">Password</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-lock"></i>
+                            <input type="password" id="password" placeholder="Minimum 6 characters" required
+                                minlength="6">
+                            <button type="button" class="password-toggle"
+                                onclick="togglePassword('password','pw-icon-1')">
+                                <i class="bi bi-eye" id="pw-icon-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="auth-form-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-lock-fill"></i>
+                            <input type="password" id="confirm_password" placeholder="Re-enter password" required>
+                            <button type="button" class="password-toggle"
+                                onclick="togglePassword('confirm_password','pw-icon-2')">
+                                <i class="bi bi-eye" id="pw-icon-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="auth-btn-submit" id="btn-register">
+                        <span id="btn-text">Create Account</span>
+                    </button>
+                </form>
+
+                <div class="auth-form-footer">
+                    Already have an account? <a href="/login.html">Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        redirectIfLoggedIn();
+        buildPublicHeader('Register');
+        buildFooter();
+
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn = document.getElementById('btn-register');
+            const btnText = document.getElementById('btn-text');
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            errorDiv.classList.remove('show');
+
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            // Validate
+            if (!name || !email || !password) {
+                errorText.textContent = 'Please fill in all required fields.';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorText.textContent = 'Password must be at least 6 characters.';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorText.textContent = 'Passwords do not match.';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            btn.disabled = true;
+            btnText.textContent = 'Creating account...';
+
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name, email, phone, password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Registration failed');
+                }
+
+                alert('Account created successfully! Redirecting to admission...');
+                setTimeout(() => {
+                    window.location.href = '/admission/academic-info.html';
+                }, 1000);
+
+            } catch (error) {
+                errorText.textContent = error.message || 'Registration failed.';
+                errorDiv.classList.add('show');
+                btn.disabled = false;
+                btnText.textContent = 'Create Account';
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Students — Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+        <div class="sidebar-brand"><div class="sidebar-brand-icon">🛡️</div><div class="sidebar-brand-text">Admin Panel<small>Management Portal</small></div></div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-label">Overview</div>
+            <a href="/admin/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <div class="sidebar-section-label">Management</div>
+            <a href="/admin/students.html" class="sidebar-nav-item active"><i class="bi bi-people"></i> Students</a>
+            <a href="/admin/lecturers.html" class="sidebar-nav-item"><i class="bi bi-person-video3"></i> Lecturers</a>
+            <a href="/admin/courses.html" class="sidebar-nav-item"><i class="bi bi-journal-bookmark"></i> Courses</a>
+            <a href="/admin/departments.html" class="sidebar-nav-item"><i class="bi bi-building"></i> Departments</a>
+            <a href="/admin/faculties.html" class="sidebar-nav-item"><i class="bi bi-building-fill"></i> Schools</a>
+            <div class="sidebar-section-label">Academic</div>
+            <a href="/admin/registrations.html" class="sidebar-nav-item"><i class="bi bi-clipboard-check"></i> Pending Approvals</a>
+            <a href="/admin/announcements.html" class="sidebar-nav-item"><i class="bi bi-megaphone"></i> Announcements</a>
+            <div class="sidebar-section-label">Reports</div>
+            <a href="/admin/reports.html" class="sidebar-nav-item"><i class="bi bi-file-earmark-bar-graph"></i> Reports & Export</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;"><i class="bi bi-box-arrow-left"></i> Logout</a></div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Manage Students</span>
+        </div>
+        <div class="navbar-right"><button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">A</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Admin</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Administrator</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div><h2><i class="bi bi-people" style="color:var(--primary);"></i> Students</h2><p>Manage all registered students</p></div>
+            <button class="btn-primary-custom" onclick="openModal()">
+                <i class="bi bi-plus-circle"></i> Add Student
+            </button>
+        </div>
+
+        <!-- Search -->
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;" class="fade-in">
+            <div class="search-box" style="flex:1;max-width:350px;">
+                <i class="bi bi-search"></i>
+                <input type="text" class="form-control-custom" id="search-input" placeholder="Search by name, reg. number..." style="padding-left:42px;" oninput="debounceSearch(this.value)">
+            </div>
+            <select class="form-control-custom" id="dept-filter" onchange="loadStudents()" style="max-width:220px;">
+                <option value="">All Departments</option>
+            </select>
+        </div>
+
+        <div class="card-custom slide-up" id="students-container">
+            <div class="loading-spinner"><div class="spinner"></div><span>Loading students...</span></div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Student Modal -->
+    <div id="student-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:var(--border-radius);width:90%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);">
+            <div style="background:var(--primary-gradient);color:white;padding:16px 20px;border-radius:var(--border-radius) var(--border-radius) 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 id="modal-title" style="font-size:16px;font-weight:600;color:white;margin:0;"><i class="bi bi-person-plus"></i> Add Student</h3>
+                <button onclick="closeModal()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:24px;">
+                <form id="student-form">
+                    <input type="hidden" id="edit-student-id">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                        <div>
+                            <label class="form-label-custom">Full Name *</label>
+                            <input type="text" id="f-name" class="form-control-custom" placeholder="Student name" required>
+                        </div>
+                        <div>
+                            <label class="form-label-custom">Email *</label>
+                            <input type="email" id="f-email" class="form-control-custom" placeholder="student@university.ac.ke" required>
+                        </div>
+                        <div>
+                            <label class="form-label-custom">Registration Number *</label>
+                            <input type="text" id="f-reg" class="form-control-custom" placeholder="e.g. CSC/00001/2024" required>
+                        </div>
+                        <div>
+                            <label class="form-label-custom">Phone</label>
+                            <input type="tel" id="f-phone" class="form-control-custom" placeholder="0712345678">
+                        </div>
+                        <div>
+                            <label class="form-label-custom">Department</label>
+                            <select id="f-dept" class="form-control-custom">
+                                <option value="">Select department</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label-custom">Year of Study</label>
+                            <select id="f-year" class="form-control-custom">
+                                <option value="1">Year 1</option>
+                                <option value="2">Year 2</option>
+                                <option value="3">Year 3</option>
+                                <option value="4">Year 4</option>
+                            </select>
+                        </div>
+                        <div id="password-field">
+                            <label class="form-label-custom">Password</label>
+                            <input type="password" id="f-password" class="form-control-custom" placeholder="Default: password123">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;">
+                        <button type="button" class="btn-outline-custom" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn-primary-custom" id="btn-save-student">
+                            <i class="bi bi-check-circle"></i> Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        let allDepts = [];
+        let editMode = false;
+
+        (async () => {
+            const user = await requireAuth('admin');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateAdminNavbar(user);
+            await Promise.all([loadStudents(), loadDepartments()]);
+        })();
+
+        let searchTimer;
+        function debounceSearch(val) {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => loadStudents(val), 300);
+        }
+
+        async function loadDepartments() {
+            try {
+                const data = await api.get('/admin/departments');
+                allDepts = data.departments || [];
+                const filter = document.getElementById('dept-filter');
+                const modalDept = document.getElementById('f-dept');
+                allDepts.forEach(d => {
+                    filter.innerHTML += `<option value="${d.department_id}">${d.department_name}</option>`;
+                    modalDept.innerHTML += `<option value="${d.department_id}">${d.department_name}</option>`;
+                });
+            } catch {}
+        }
+
+        async function loadStudents(keyword = '') {
+            const deptId = document.getElementById('dept-filter').value;
+            let url = '/admin/students';
+            const params = [];
+            if (keyword) params.push(`keyword=${encodeURIComponent(keyword)}`);
+            if (deptId) params.push(`department_id=${deptId}`);
+            if (params.length) url += '?' + params.join('&');
+
+            showLoading('students-container');
+            try {
+                const data = await api.get(url);
+                const students = data.students || [];
+                if (students.length === 0) { showEmpty('students-container', 'bi-people', 'No Students Found', keyword ? 'Try a different search.' : 'No students yet.'); return; }
+
+                document.getElementById('students-container').innerHTML = `
+                    <div style="overflow-x:auto;">
+                    <table class="table-custom">
+                        <thead><tr><th>#</th><th>Reg. Number</th><th>Name</th><th>Email</th><th>Department</th><th>Year</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            ${students.map((s, i) => `<tr>
+                                <td>${i + 1}</td>
+                                <td><strong style="color:var(--primary);">${s.registration_number}</strong></td>
+                                <td>${s.student_name}</td>
+                                <td style="font-size:12px;">${s.email}</td>
+                                <td>${s.department_name || 'N/A'}</td>
+                                <td>${s.year_of_study}</td>
+                                <td>${s.is_active ? '<span class="badge-status badge-approved">Active</span>' : '<span class="badge-status badge-rejected">Inactive</span>'}</td>
+                                <td>
+                                    <button class="btn-outline-custom btn-sm-custom" onclick="editStudent(${s.student_id})"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn-danger-custom btn-sm-custom" onclick="deleteStudent(${s.student_id}, '${s.student_name}')"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table></div>`;
+            } catch (error) {
+                showToast('Failed to load students.', 'error');
+            }
+        }
+
+        function openModal(isEdit = false) {
+            editMode = isEdit;
+            document.getElementById('student-form').reset();
+            document.getElementById('edit-student-id').value = '';
+            document.getElementById('modal-title').innerHTML = '<i class="bi bi-person-plus"></i> Add Student';
+            document.getElementById('password-field').style.display = isEdit ? 'none' : 'block';
+            document.getElementById('student-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('student-modal').style.display = 'none';
+        }
+
+        async function editStudent(studentId) {
+            try {
+                const data = await api.get(`/admin/students/${studentId}`);
+                const s = data.student;
+                document.getElementById('edit-student-id').value = s.student_id;
+                document.getElementById('f-name').value = s.student_name;
+                document.getElementById('f-email').value = s.email;
+                document.getElementById('f-reg').value = s.registration_number;
+                document.getElementById('f-phone').value = s.phone || '';
+                document.getElementById('f-dept').value = s.department_id || '';
+                document.getElementById('f-year').value = s.year_of_study || 1;
+                document.getElementById('modal-title').innerHTML = '<i class="bi bi-pencil"></i> Edit Student';
+                document.getElementById('password-field').style.display = 'none';
+                document.getElementById('student-modal').style.display = 'flex';
+                editMode = true;
+            } catch {
+                showToast('Failed to load student data.', 'error');
+            }
+        }
+
+        document.getElementById('student-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-student');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+
+            const studentId = document.getElementById('edit-student-id').value;
+            const payload = {
+                student_name: document.getElementById('f-name').value.trim(),
+                email: document.getElementById('f-email').value.trim(),
+                registration_number: document.getElementById('f-reg').value.trim(),
+                phone: document.getElementById('f-phone').value.trim(),
+                department_id: document.getElementById('f-dept').value || null,
+                year_of_study: parseInt(document.getElementById('f-year').value)
+            };
+            if (!editMode) payload.password = document.getElementById('f-password').value || 'password123';
+
+            try {
+                if (editMode && studentId) {
+                    await api.put(`/admin/students/${studentId}`, payload);
+                    showToast('Student updated!', 'success');
+                } else {
+                    await api.post('/admin/students', payload);
+                    showToast('Student created!', 'success');
+                }
+                closeModal();
+                await loadStudents();
+            } catch (error) {
+                showToast(error.message || 'Save failed.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle"></i> Save';
+            }
+        });
+
+        async function deleteStudent(studentId, name) {
+            if (!confirm(`Deactivate student "${name}"? They will not be able to log in.`)) return;
+            try {
+                await api.delete(`/admin/students/${studentId}`);
+                showToast('Student deactivated.', 'success');
+                await loadStudents();
+            } catch (error) {
+                showToast(error.message || 'Failed.', 'error');
+            }
+        }
+
+        // populateAdminNavbar is defined in api.js
+    </script>
+</body>
+</html>

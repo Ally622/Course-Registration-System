@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Information — Admission</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">
+                Admission Portal
+                <small>Step 1 of 4</small>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/admission/academic-info.html" class="sidebar-nav-item active">
+                <i class="bi bi-file-earmark-text"></i> Academic Information
+            </a>
+            <a href="/admission/kcse-grades.html" class="sidebar-nav-item">
+                <i class="bi bi-clipboard-data"></i> KCSE Results
+            </a>
+            <a href="/admission/programmes.html" class="sidebar-nav-item">
+                <i class="bi bi-book"></i> Programme Selection
+            </a>
+            <a href="/admission/status.html" class="sidebar-nav-item">
+                <i class="bi bi-check-circle"></i> Application Status
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="navbar-title">Academic Information</span>
+        </div>
+        <div class="navbar-right">
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2>Academic Information</h2>
+            <p>Please provide your KCSE examination details</p>
+        </div>
+
+        <div class="card-custom fade-in" style="max-width:700px;margin:0 auto;">
+            <div class="card-header-custom">
+                <i class="bi bi-file-earmark-text"></i> KCSE Examination Details
+            </div>
+            <div class="card-body-custom">
+                <form id="academic-form">
+                    <div class="form-group">
+                        <label for="kcse-year">KCSE Examination Year <span style="color:#ef5350;">*</span></label>
+                        <input type="number" id="kcse-year" class="form-control" 
+                               min="1990" max="2030" placeholder="e.g., 2023" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="index-number">KCSE Index Number</label>
+                        <input type="text" id="index-number" class="form-control" 
+                               placeholder="e.g., 12345678901/2023" maxlength="50">
+                        <small style="color:var(--text-muted);">Optional</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mean-grade">Mean Grade <span style="color:#ef5350;">*</span></label>
+                        <select id="mean-grade" class="form-control" required>
+                            <option value="">-- Select Mean Grade --</option>
+                            <option value="A">A</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B">B</option>
+                            <option value="B-">B-</option>
+                            <option value="C+">C+</option>
+                            <option value="C">C</option>
+                            <option value="C-">C-</option>
+                            <option value="D+">D+</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex;gap:12px;margin-top:24px;">
+                        <button type="submit" class="btn-primary-custom" id="save-btn">
+                            <i class="bi bi-save"></i> Save & Continue
+                        </button>
+                        <button type="button" class="btn-outline-custom" onclick="window.location.href='/admission/kcse-grades.html'">
+                            Skip to Next
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+
+            upgradeSidebarBrand();
+            populateNavbar(user);
+
+            // Load existing data
+            try {
+                const data = await api.get('/admission/academic-info');
+                if (data.info) {
+                    document.getElementById('kcse-year').value = data.info.kcse_year || '';
+                    document.getElementById('index-number').value = data.info.index_number || '';
+                    document.getElementById('mean-grade').value = data.info.mean_grade || '';
+                }
+            } catch (error) {
+                console.error('Failed to load academic info:', error);
+            }
+
+            // Handle form submission
+            document.getElementById('academic-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const kcseYear = document.getElementById('kcse-year').value.trim();
+                const indexNumber = document.getElementById('index-number').value.trim();
+                const meanGrade = document.getElementById('mean-grade').value;
+
+                if (!kcseYear || !meanGrade) {
+                    showToast('Please fill in all required fields.', 'error');
+                    return;
+                }
+
+                const saveBtn = document.getElementById('save-btn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+
+                try {
+                    await api.post('/admission/academic-info', {
+                        kcse_year: parseInt(kcseYear),
+                        index_number: indexNumber || null,
+                        mean_grade: meanGrade
+                    });
+
+                    showToast('Academic information saved successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/admission/kcse-grades.html';
+                    }, 1000);
+
+                } catch (error) {
+                    showToast(error.message || 'Failed to save academic information.', 'error');
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="bi bi-save"></i> Save & Continue';
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

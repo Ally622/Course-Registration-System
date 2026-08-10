@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Schools — Course Registration System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+    <main style="min-height:100vh;background:#f8f9fa;">
+        <!-- Page Header -->
+        <section style="background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);color:white;padding:80px 20px 60px;text-align:center;">
+            <div style="max-width:900px;margin:0 auto;">
+                <h1 style="font-size:clamp(28px, 5vw, 42px);font-weight:700;margin:0 0 16px 0;color:white;">Our Schools & Programmes</h1>
+                <p style="font-size:clamp(15px, 2.5vw, 18px);opacity:0.95;max-width:700px;margin:0 auto;line-height:1.6;">
+                    Discover our world-class academic schools offering diverse programmes designed to shape future leaders and innovators.
+                </p>
+            </div>
+        </section>
+
+        <!-- Schools Grid -->
+        <section style="max-width:1200px;margin:-40px auto 60px;padding:0 20px;">
+            <div id="schools-container">
+                <div class="loading-spinner" style="background:white;padding:60px;border-radius:12px;box-shadow:var(--shadow-md);">
+                    <div class="spinner"></div>
+                    <span>Loading schools...</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        (async () => {
+            buildPublicHeader('Schools');
+            buildFooter();
+            await loadSchools();
+        })();
+
+        async function loadSchools() {
+            try {
+                // Fetch schools with departments and programmes from PUBLIC API
+                const schoolsData = await api.get('/api/public/schools');
+                const schools = schoolsData.schools || [];
+
+                if (schools.length === 0) {
+                    document.getElementById('schools-container').innerHTML = `
+                        <div class="empty-state" style="background:white;padding:60px;border-radius:12px;box-shadow:var(--shadow-md);">
+                            <i class="bi bi-building" style="font-size:48px;color:var(--text-muted);"></i>
+                            <p>No schools available.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // For each school, fetch its departments and programmes
+                const schoolsWithData = await Promise.all(schools.map(async (school) => {
+                    try {
+                        const deptsData = await api.get(`/api/public/schools/${school.school_id}/departments`);
+                        const departments = deptsData.departments || [];
+                        
+                        // For each department, fetch programmes
+                        const departmentsWithProgrammes = await Promise.all(departments.map(async (dept) => {
+                            try {
+                                const progData = await api.get(`/api/public/departments/${dept.department_id}/programmes`);
+                                return { ...dept, programmes: progData.programmes || [] };
+                            } catch {
+                                return { ...dept, programmes: [] };
+                            }
+                        }));
+
+                        return { ...school, departments: departmentsWithProgrammes };
+                    } catch {
+                        return { ...school, departments: [] };
+                    }
+                }));
+
+                renderSchools(schoolsWithData);
+
+            } catch (error) {
+                document.getElementById('schools-container').innerHTML = `
+                    <div class="empty-state" style="background:white;padding:60px;border-radius:12px;box-shadow:var(--shadow-md);">
+                        <i class="bi bi-exclamation-triangle" style="font-size:48px;color:var(--danger);"></i>
+                        <p>Failed to load schools.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSchools(schools) {
+            const container = document.getElementById('schools-container');
+
+            container.innerHTML = schools.map((school, index) => {
+                const colors = [
+                    { primary: '#1976D2', light: '#E3F2FD', icon: 'bi-pc-display-horizontal' },
+                    { primary: '#388E3C', light: '#E8F5E9', icon: 'bi-gear' },
+                    { primary: '#D32F2F', light: '#FFEBEE', icon: 'bi-briefcase' },
+                    { primary: '#7B1FA2', light: '#F3E5F5', icon: 'bi-heart-pulse' },
+                    { primary: '#F57C00', light: '#FFF3E0', icon: 'bi-book' },
+                    { primary: '#0097A7', light: '#E0F7FA', icon: 'bi-globe' }
+                ];
+                const color = colors[index % colors.length];
+
+                return `
+                    <div class="school-card fade-in" style="animation-delay: ${index * 0.1}s;">
+                        <!-- School Header -->
+                        <div class="school-header" style="background:linear-gradient(135deg, ${color.primary} 0%, ${adjustBrightness(color.primary, -20)} 100%);">
+                            <div class="school-icon" style="background:rgba(255,255,255,0.2);">
+                                <i class="bi ${color.icon}" style="font-size:32px;color:white;"></i>
+                            </div>
+                            <div>
+                                <h2 class="school-title">${school.school_name}</h2>
+                                ${school.dean ? `<p class="school-dean"><i class="bi bi-person-badge"></i> Dean: ${school.dean}</p>` : ''}
+                                <div class="school-stats">
+                                    <span><i class="bi bi-building"></i> ${school.departments.length} Department${school.departments.length !== 1 ? 's' : ''}</span>
+                                    <span><i class="bi bi-journal-bookmark"></i> ${countProgrammes(school.departments)} Programme${countProgrammes(school.departments) !== 1 ? 's' : ''}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Departments -->
+                        <div class="school-body">
+                            ${school.departments.length > 0 ? school.departments.map(dept => `
+                                <div class="department-section">
+                                    <h3 class="department-title" style="color:${color.primary};">
+                                        <i class="bi bi-folder" style="font-size:18px;"></i> ${dept.department_name}
+                                    </h3>
+                                    ${dept.programmes && dept.programmes.length > 0 ? `
+                                        <ul class="programme-list">
+                                            ${dept.programmes.map(prog => `
+                                                <li class="programme-item">
+                                                    <i class="bi bi-check-circle-fill" style="color:${color.primary};"></i>
+                                                    <span>${prog.course_name || prog.programme_name}</span>
+                                                </li>
+                                            `).join('')}
+                                        </ul>
+                                    ` : `<p style="font-size:13px;color:var(--text-muted);margin:8px 0 0 24px;">No programmes available</p>`}
+                                </div>
+                            `).join('') : `
+                                <div style="padding:20px;text-align:center;color:var(--text-muted);">
+                                    <i class="bi bi-inbox" style="font-size:32px;opacity:0.5;"></i>
+                                    <p style="margin:8px 0 0 0;font-size:13px;">No departments yet</p>
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- School Footer -->
+                        <div class="school-footer">
+                            <a href="/register.html" class="btn-primary-custom" style="text-decoration:none;width:100%;justify-content:center;">
+                                <i class="bi bi-person-plus"></i> Apply Now
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function countProgrammes(departments) {
+            return departments.reduce((total, dept) => total + (dept.programmes?.length || 0), 0);
+        }
+
+        function adjustBrightness(hex, percent) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.max(0, Math.min(255, (num >> 16) + percent));
+            const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + percent));
+            const b = Math.max(0, Math.min(255, (num & 0x0000FF) + percent));
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
+    </script>
+
+    <style>
+        .school-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 32px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .school-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-4px);
+        }
+
+        .school-header {
+            padding: 32px;
+            color: white;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .school-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .school-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: white;
+        }
+
+        .school-dean {
+            font-size: 14px;
+            margin: 0 0 12px 0;
+            opacity: 0.95;
+            color: white;
+        }
+
+        .school-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            margin-top: 12px;
+            opacity: 0.9;
+        }
+
+        .school-stats span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .school-body {
+            padding: 28px 32px;
+        }
+
+        .department-section {
+            margin-bottom: 24px;
+        }
+
+        .department-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .department-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .programme-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .programme-item {
+            padding: 8px 0 8px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .programme-item:last-child {
+            border-bottom: none;
+        }
+
+        .programme-item i {
+            font-size: 14px;
+        }
+
+        .school-footer {
+            padding: 24px 32px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        @media (max-width: 768px) {
+            .school-header {
+                padding: 24px 20px;
+                flex-direction: column;
+                text-align: center;
+                align-items: center;
+            }
+
+            .school-icon {
+                width: 64px;
+                height: 64px;
+            }
+
+            .school-title {
+                font-size: 20px;
+            }
+
+            .school-stats {
+                flex-direction: column;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .school-body {
+                padding: 20px 16px;
+            }
+
+            .school-footer {
+                padding: 20px 16px;
+            }
+        }
+    </style>
+</body>
+</html>

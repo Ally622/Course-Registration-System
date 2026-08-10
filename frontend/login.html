@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Course Registration System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/auth.css">
+</head>
+<body>
+
+    <div class="auth-wrapper">
+        <!-- Left Brand Panel -->
+        <div class="auth-brand-panel">
+            <div class="auth-brand-logo">🎓</div>
+            <h1 class="auth-brand-title">Course Registration System</h1>
+            <p class="auth-brand-subtitle" id="brand-subtitle">
+                Access your student portal to register courses, view results,
+                and manage your academic journey.
+            </p>
+        </div>
+
+        <!-- Right Form Panel -->
+        <div class="auth-form-panel">
+            <div class="auth-form-container">
+                <h2 class="auth-form-title" id="form-title">Student Login</h2>
+                <p class="auth-form-subtitle" id="form-subtitle">Enter your credentials to continue</p>
+
+                <!-- Error Message -->
+                <div class="auth-error-message" id="error-message">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <span id="error-text"></span>
+                </div>
+
+                <form id="login-form" novalidate>
+
+                    <!-- Student: Identifier field -->
+                    <div class="auth-form-group" id="reg-number-group">
+                        <label for="identifier">Registration Number</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-person"></i>
+                            <input
+                                type="text"
+                                id="identifier"
+                                placeholder="Registration number or email"
+                                required
+                                autocomplete="username"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Staff: Email field (admin / registrar / lecturer) -->
+                    <div class="auth-form-group" id="email-group" style="display:none;">
+                        <label for="staff_email" id="email-label">Email Address</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-envelope"></i>
+                            <input
+                                type="email"
+                                id="staff_email"
+                                placeholder="your@university.ac.ke"
+                                autocomplete="email"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="auth-form-group">
+                        <label for="password">Password</label>
+                        <div class="input-icon-wrapper">
+                            <i class="bi bi-lock"></i>
+                            <input
+                                type="password"
+                                id="password"
+                                placeholder="Enter your password"
+                                required
+                                autocomplete="current-password"
+                            >
+                            <button type="button" class="password-toggle" onclick="togglePassword()">
+                                <i class="bi bi-eye" id="password-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Extras Row -->
+                    <div class="auth-form-extras">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="checkbox" id="remember-me"> Remember me
+                        </label>
+                        <a href="/forgot-password.html">Forgot Password?</a>
+                    </div>
+
+                    <!-- Submit -->
+                    <button type="submit" class="auth-btn-submit" id="btn-login">
+                        <span id="btn-text">Login</span>
+                    </button>
+                </form>
+
+                <!-- Toggle between student / staff login -->
+                <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #f0f0f0;">
+                    <span style="font-size:13px;color:var(--text-muted);" id="toggle-hint">
+                        Admin, Registrar or Lecturer?
+                    </span>
+                    <a href="#" onclick="toggleMode()" style="font-size:13px;margin-left:6px;" id="toggle-link">
+                        <i class="bi bi-shield-lock" id="toggle-icon"></i>
+                        <span id="toggle-text">Staff Login</span>
+                    </a>
+                </div>
+
+                <!-- Footer -->
+                <div class="auth-form-footer">
+                    Don't have an account? <a href="/register.html">Register as Student</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        // Redirect away if already logged in
+        redirectIfLoggedIn();
+        buildPublicHeader('Login');
+        buildFooter();
+
+        // Track current mode: 'student' | 'staff'
+        let loginMode = 'student';
+
+        function toggleMode() {
+            loginMode = loginMode === 'student' ? 'staff' : 'student';
+
+            const regGroup   = document.getElementById('reg-number-group');
+            const emailGroup = document.getElementById('email-group');
+            const regInput   = document.getElementById('identifier');
+            const formTitle  = document.getElementById('form-title');
+            const formSub    = document.getElementById('form-subtitle');
+            const brandSub   = document.getElementById('brand-subtitle');
+            const toggleHint = document.getElementById('toggle-hint');
+            const toggleText = document.getElementById('toggle-text');
+            const toggleIcon = document.getElementById('toggle-icon');
+
+            if (loginMode === 'staff') {
+                regGroup.style.display = 'none';
+                regInput.removeAttribute('required');
+                emailGroup.style.display = 'block';
+                formTitle.textContent = 'Staff Login';
+                formSub.textContent = 'Admin, Registrar or Lecturer';
+                brandSub.textContent = 'Manage students, courses, and academic operations through the administration portal.';
+                toggleHint.textContent = 'Are you a student?';
+                toggleText.textContent = 'Student Login';
+                toggleIcon.className = 'bi bi-person-circle';
+            } else {
+                emailGroup.style.display = 'none';
+                regGroup.style.display = 'block';
+                regInput.setAttribute('required', '');
+                formTitle.textContent = 'Student Login';
+                formSub.textContent = 'Enter your credentials to continue';
+                brandSub.textContent = 'Access your student portal to register courses, view results, and manage your academic journey.';
+                toggleHint.textContent = 'Admin, Registrar or Lecturer?';
+                toggleText.textContent = 'Staff Login';
+                toggleIcon.className = 'bi bi-shield-lock';
+            }
+
+            // Clear any errors
+            document.getElementById('error-message').classList.remove('show');
+        }
+
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const icon  = document.getElementById('password-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        // ── Form submission ──────────────────────────────────────────
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn      = document.getElementById('btn-login');
+            const btnText  = document.getElementById('btn-text');
+            const errorDiv = document.getElementById('error-message');
+            const errorTxt = document.getElementById('error-text');
+            errorDiv.classList.remove('show');
+
+            const password = document.getElementById('password').value.trim();
+            if (!password) {
+                errorTxt.textContent = 'Please enter your password.';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            const body = { password };
+
+            if (loginMode === 'staff') {
+                const email = document.getElementById('staff_email').value.trim();
+                if (!email) {
+                    errorTxt.textContent = 'Please enter your email address.';
+                    errorDiv.classList.add('show');
+                    return;
+                }
+                body.identifier = email;
+            } else {
+                const identifier = document.getElementById('identifier').value.trim();
+                if (!identifier) {
+                    errorTxt.textContent = 'Please enter your email or registration number.';
+                    errorDiv.classList.add('show');
+                    return;
+                }
+                body.identifier = identifier;
+            }
+
+            btn.disabled = true;
+            btnText.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Login failed');
+                }
+
+                btnText.textContent = 'Redirecting...';
+
+                setTimeout(() => {
+                    const role = data.user.role;
+                    if (role === 'admin' || role === 'registrar') {
+                        window.location.href = '/admin/dashboard.html';
+                    } else if (role === 'lecturer') {
+                        window.location.href = '/student/dashboard.html';
+                    } else {
+                        window.location.href = '/student/dashboard.html';
+                    }
+                }, 300);
+
+            } catch (error) {
+                errorTxt.textContent = error.message || 'Invalid credentials. Please try again.';
+                errorDiv.classList.add('show');
+                btn.disabled = false;
+                btnText.textContent = 'Login';
+            }
+        });
+    </script>
+</body>
+</html>

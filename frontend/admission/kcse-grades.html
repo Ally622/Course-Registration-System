@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCSE Results — Admission</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">
+                Admission Portal
+                <small>Step 2 of 4</small>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/admission/academic-info.html" class="sidebar-nav-item">
+                <i class="bi bi-file-earmark-text"></i> Academic Information
+            </a>
+            <a href="/admission/kcse-grades.html" class="sidebar-nav-item active">
+                <i class="bi bi-clipboard-data"></i> KCSE Results
+            </a>
+            <a href="/admission/programmes.html" class="sidebar-nav-item">
+                <i class="bi bi-book"></i> Programme Selection
+            </a>
+            <a href="/admission/status.html" class="sidebar-nav-item">
+                <i class="bi bi-check-circle"></i> Application Status
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="navbar-title">KCSE Results</span>
+        </div>
+        <div class="navbar-right">
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2>KCSE Subject Grades</h2>
+            <p>Select the grade you achieved in each subject</p>
+        </div>
+
+        <div class="card-custom fade-in" style="max-width:900px;margin:0 auto;">
+            <div class="card-header-custom">
+                <i class="bi bi-clipboard-data"></i> Subject Grades
+            </div>
+            <div class="card-body-custom">
+                <form id="grades-form">
+                    <div id="subjects-container" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px,1fr));gap:16px;">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <span>Loading subjects...</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:12px;margin-top:28px;">
+                        <button type="submit" class="btn-primary-custom" id="save-btn">
+                            <i class="bi bi-save"></i> Save & Continue
+                        </button>
+                        <button type="button" class="btn-outline-custom" onclick="window.location.href='/admission/programmes.html'">
+                            Skip to Next
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        let allSubjects = [];
+        let allowedGrades = [];
+
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+
+            upgradeSidebarBrand();
+            populateNavbar(user);
+
+            // Load subjects and saved grades
+            try {
+                const data = await api.get('/admission/kcse-grades');
+                allSubjects = data.subjects || [];
+                allowedGrades = data.allowed_grades || [];
+                const savedGrades = data.grades || {};
+
+                renderSubjects(savedGrades);
+
+            } catch (error) {
+                showToast('Failed to load subjects.', 'error');
+                document.getElementById('subjects-container').innerHTML =
+                    '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Failed to load subjects.</p></div>';
+            }
+
+            // Handle form submission
+            document.getElementById('grades-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                // Collect all selected grades
+                const grades = {};
+                allSubjects.forEach(subject => {
+                    const select = document.getElementById(`grade-${subject}`);
+                    if (select && select.value) {
+                        grades[subject] = select.value;
+                    }
+                });
+
+                if (Object.keys(grades).length === 0) {
+                    showToast('Please select at least one subject grade.', 'error');
+                    return;
+                }
+
+                const saveBtn = document.getElementById('save-btn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+
+                try {
+                    await api.post('/admission/kcse-grades', { grades });
+
+                    showToast('KCSE grades saved successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/admission/programmes.html';
+                    }, 1000);
+
+                } catch (error) {
+                    showToast(error.message || 'Failed to save grades.', 'error');
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="bi bi-save"></i> Save & Continue';
+                }
+            });
+        })();
+
+        function renderSubjects(savedGrades) {
+            const container = document.getElementById('subjects-container');
+            
+            container.innerHTML = allSubjects.map(subject => {
+                const savedGrade = savedGrades[subject] || '';
+                const gradeOptions = allowedGrades.map(g => 
+                    `<option value="${g}" ${g === savedGrade ? 'selected' : ''}>${g}</option>`
+                ).join('');
+
+                return `
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="grade-${subject}" style="font-size:13px;font-weight:600;margin-bottom:6px;">
+                            ${subject}
+                        </label>
+                        <select id="grade-${subject}" class="form-control" style="font-size:13px;">
+                            <option value="">-- Select Grade --</option>
+                            ${gradeOptions}
+                        </select>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+
+    <style>
+        @media (max-width: 768px) {
+            #subjects-container {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+</body>
+</html>

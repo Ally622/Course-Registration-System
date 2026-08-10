@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Approvals — Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+        <div class="sidebar-brand"><div class="sidebar-brand-icon">🛡️</div><div class="sidebar-brand-text">Admin Panel<small>Management Portal</small></div></div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-label">Overview</div>
+            <a href="/admin/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <div class="sidebar-section-label">Management</div>
+            <a href="/admin/students.html" class="sidebar-nav-item"><i class="bi bi-people"></i> Students</a>
+            <a href="/admin/lecturers.html" class="sidebar-nav-item"><i class="bi bi-person-video3"></i> Lecturers</a>
+            <a href="/admin/courses.html" class="sidebar-nav-item"><i class="bi bi-journal-bookmark"></i> Courses</a>
+            <a href="/admin/departments.html" class="sidebar-nav-item"><i class="bi bi-building"></i> Departments</a>
+            <a href="/admin/faculties.html" class="sidebar-nav-item"><i class="bi bi-building-fill"></i> Schools</a>
+            <div class="sidebar-section-label">Academic</div>
+            <a href="/admin/registrations.html" class="sidebar-nav-item active"><i class="bi bi-clipboard-check"></i> Pending Approvals</a>
+            <a href="/admin/announcements.html" class="sidebar-nav-item"><i class="bi bi-megaphone"></i> Announcements</a>
+            <div class="sidebar-section-label">Reports</div>
+            <a href="/admin/reports.html" class="sidebar-nav-item"><i class="bi bi-file-earmark-bar-graph"></i> Reports & Export</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;"><i class="bi bi-box-arrow-left"></i> Logout</a></div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Pending Approvals</span>
+        </div>
+        <div class="navbar-right"><button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">A</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Admin</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Administrator</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2><i class="bi bi-clipboard-check" style="color:var(--primary);"></i> Pending Approvals</h2>
+            <p>Approve or reject student course registration requests</p>
+        </div>
+
+        <!-- Filters -->
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;" class="fade-in">
+            <div class="search-box" style="flex:1;max-width:300px;">
+                <i class="bi bi-search"></i>
+                <input type="text" class="form-control-custom" id="search-input" placeholder="Search by student name..." style="padding-left:42px;" oninput="debounceSearch(this.value)">
+            </div>
+            <select class="form-control-custom" id="status-filter" onchange="loadRegistrations()" style="max-width:160px;">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="dropped">Dropped</option>
+            </select>
+            <button class="btn-primary-custom btn-sm-custom" onclick="approveAll()" title="Approve all pending">
+                <i class="bi bi-check-all"></i> Approve All Pending
+            </button>
+        </div>
+
+        <div class="card-custom slide-up" id="registrations-container">
+            <div class="loading-spinner"><div class="spinner"></div><span>Loading registrations...</span></div>
+        </div>
+    </main>
+
+    <!-- Reject Reason Modal -->
+    <div id="reject-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:var(--border-radius);width:90%;max-width:420px;box-shadow:var(--shadow-lg);">
+            <div style="background:var(--danger);color:white;padding:16px 20px;border-radius:var(--border-radius) var(--border-radius) 0 0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="font-size:16px;font-weight:600;color:white;margin:0;"><i class="bi bi-x-circle"></i> Reject Registration</h3>
+                <button onclick="closeRejectModal()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:24px;">
+                <input type="hidden" id="reject-reg-id">
+                <label class="form-label-custom">Reason for Rejection</label>
+                <textarea id="reject-reason" class="form-control-custom" rows="3" placeholder="Provide a reason..." style="resize:vertical;"></textarea>
+                <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                    <button class="btn-outline-custom" onclick="closeRejectModal()">Cancel</button>
+                    <button class="btn-danger-custom" onclick="confirmReject()"><i class="bi bi-x-circle"></i> Confirm Reject</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        let searchTimer;
+        function debounceSearch(val) { clearTimeout(searchTimer); searchTimer = setTimeout(() => loadRegistrations(val), 300); }
+
+        (async () => {
+            const user = await requireAuth('admin');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateAdminNavbar(user);
+            await loadRegistrations();
+        })();
+
+        async function loadRegistrations(keyword = '') {
+            const status = document.getElementById('status-filter').value;
+            let url = '/admin/registrations';
+            const params = [];
+            if (status) params.push(`status=${status}`);
+            if (keyword) params.push(`keyword=${encodeURIComponent(keyword)}`);
+            if (params.length) url += '?' + params.join('&');
+
+            showLoading('registrations-container');
+            try {
+                const data = await api.get(url);
+                const regs = data.registrations || [];
+                if (regs.length === 0) {
+                    showEmpty('registrations-container', 'bi-clipboard-x', 'No Registrations Found', 'Try adjusting the filters.');
+                    return;
+                }
+
+                document.getElementById('registrations-container').innerHTML = `
+                    <div style="overflow-x:auto;">
+                    <table class="table-custom">
+                        <thead><tr><th>#</th><th>Reg. Number</th><th>Student</th><th>Course</th><th>Semester</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            ${regs.map((r, i) => `<tr>
+                                <td>${i + 1}</td>
+                                <td><strong style="color:var(--primary);font-size:12px;">${r.registration_number}</strong></td>
+                                <td style="font-weight:600;font-size:13px;">${r.student_name}</td>
+                                <td><strong style="color:var(--primary);">${r.course_code}</strong><div style="font-size:11px;color:var(--text-muted);">${r.course_name}</div></td>
+                                <td style="font-size:12px;">${r.semester_name} ${r.academic_year}</td>
+                                <td style="font-size:12px;">${formatDate(r.registration_date)}</td>
+                                <td>${statusBadge(r.status)}</td>
+                                <td>
+                                    ${r.status === 'pending' ? `
+                                        <button class="btn-success-custom btn-sm-custom" onclick="approve(${r.registration_id})"><i class="bi bi-check-circle"></i></button>
+                                        <button class="btn-danger-custom btn-sm-custom" onclick="openRejectModal(${r.registration_id})"><i class="bi bi-x-circle"></i></button>
+                                    ` : '<span style="color:var(--text-muted);font-size:12px;">—</span>'}
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table></div>`;
+            } catch (error) {
+                showToast('Failed to load registrations.', 'error');
+            }
+        }
+
+        async function approve(id) {
+            try {
+                await api.put(`/admin/registrations/${id}/approve`);
+                showToast('Registration approved.', 'success');
+                await loadRegistrations();
+            } catch (error) {
+                showToast(error.message || 'Failed.', 'error');
+            }
+        }
+
+        async function approveAll() {
+            if (!confirm('Approve all pending registrations?')) return;
+            // Fetch pending, then approve each
+            try {
+                const data = await api.get('/admin/registrations?status=pending');
+                const pending = data.registrations || [];
+                if (pending.length === 0) { showToast('No pending registrations.', 'info'); return; }
+                let count = 0;
+                for (const r of pending) {
+                    try { await api.put(`/admin/registrations/${r.registration_id}/approve`); count++; } catch {}
+                }
+                showToast(`${count} registration(s) approved.`, 'success');
+                await loadRegistrations();
+            } catch { showToast('Failed to approve all.', 'error'); }
+        }
+
+        function openRejectModal(id) {
+            document.getElementById('reject-reg-id').value = id;
+            document.getElementById('reject-reason').value = '';
+            document.getElementById('reject-modal').style.display = 'flex';
+        }
+        function closeRejectModal() { document.getElementById('reject-modal').style.display = 'none'; }
+
+        async function confirmReject() {
+            const id = document.getElementById('reject-reg-id').value;
+            const reason = document.getElementById('reject-reason').value.trim();
+            try {
+                await api.put(`/admin/registrations/${id}/reject`, { reason });
+                showToast('Registration rejected.', 'success');
+                closeRejectModal();
+                await loadRegistrations();
+            } catch (error) { showToast(error.message || 'Failed.', 'error'); }
+        }
+
+        // populateAdminNavbar is defined in api.js
+    </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Registration — Course Registration System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-text">Course Registration<small>Student Portal</small></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/student/dashboard.html" class="sidebar-nav-item"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="/student/courses.html" class="sidebar-nav-item active"><i class="bi bi-journal-bookmark"></i> Course Registration</a>
+            <a href="/student/my-courses.html" class="sidebar-nav-item"><i class="bi bi-bookmark-check"></i> My Units</a>
+            <a href="/student/results.html" class="sidebar-nav-item"><i class="bi bi-graph-up"></i> Results</a>
+            <a href="/student/timetable.html" class="sidebar-nav-item"><i class="bi bi-calendar-week"></i> Timetable</a>
+            <a href="/student/history.html" class="sidebar-nav-item"><i class="bi bi-clock-history"></i> History</a>
+            <a href="/student/profile.html" class="sidebar-nav-item"><i class="bi bi-person-circle"></i> Profile</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="#" class="sidebar-nav-item" onclick="logout()" style="border:none;color:#ef5350;">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <header class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <span class="navbar-title">Course Registration</span>
+        </div>
+        <div class="navbar-right"><button class="navbar-logout-btn" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button>
+            <div class="navbar-notification" title="Notifications"
+                 onclick="window.location.href='/student/notifications.html'" style="cursor:pointer;">
+                <i class="bi bi-bell"></i>
+                <span class="badge" id="notif-count" style="display:none;">0</span>
+            </div>
+            <div class="navbar-user">
+                <div class="navbar-avatar" id="navbar-avatar">?</div>
+                <div>
+                    <div class="navbar-user-name" id="navbar-user-name">Loading...</div>
+                    <div class="navbar-user-role" id="navbar-user-role">Student</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header fade-in">
+            <h2><i class="bi bi-journal-bookmark" style="color:var(--primary);"></i> Course Registration</h2>
+            <p>Browse and register for courses this semester</p>
+        </div>
+
+        <!-- Search & Selected Count -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px;" class="fade-in">
+            <div class="search-box" style="flex:1;max-width:400px;">
+                <i class="bi bi-search"></i>
+                <input type="text" class="form-control-custom" id="search-input" placeholder="Search by course code or name..." style="padding-left:42px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:14px;color:var(--text-secondary);">
+                    Selected: <strong id="selected-count" style="color:var(--primary);">0</strong>
+                </span>
+                <button class="btn-primary-custom" id="btn-register" onclick="registerCourses()" disabled>
+                    <i class="bi bi-check2-circle"></i> Register Selected
+                </button>
+            </div>
+        </div>
+
+        <!-- Course Table -->
+        <div class="card-custom slide-up">
+            <div id="courses-container">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <span>Loading courses...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script>
+        let selectedCourses = new Set();
+        let allCourses = [];
+
+        (async () => {
+            const user = await requireAuth('student');
+            if (!user) return;
+            upgradeSidebarBrand();
+            buildFooter();
+            populateNavbar(user);
+            await loadCourses();
+        })();
+
+        // Search with debounce
+        let searchTimer;
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => loadCourses(e.target.value), 300);
+        });
+
+        async function loadCourses(keyword = '') {
+            const container = document.getElementById('courses-container');
+            showLoading('courses-container');
+
+            try {
+                const endpoint = keyword
+                    ? `/registration/courses?keyword=${encodeURIComponent(keyword)}`
+                    : '/registration/courses';
+
+                const data = await api.get(endpoint);
+                allCourses = data.courses || [];
+
+                if (allCourses.length === 0) {
+                    showEmpty('courses-container', 'bi-journal-x', 'No Courses Found',
+                        keyword ? 'Try a different search term.' : 'No courses available for your programme.');
+                    return;
+                }
+
+                container.innerHTML = `
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;text-align:center;">
+                                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()" title="Select all">
+                                </th>
+                                <th>Code</th>
+                                <th>Course Name</th>
+                                <th>Credits</th>
+                                <th>Programme</th>
+                                <th>Lecturer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allCourses.map(c => {
+                                const courseId = c.course_id;
+                                const courseCode = c.course_code;
+                                const courseName = c.course_name;
+                                const programmeName = c.programme_name || c.department_name || 'N/A';
+                                const lecturerName = c.lecturer_name || 'TBA';
+                                
+                                return `
+                                <tr id="row-${courseId}" style="cursor:pointer;" onclick="toggleCourse(${courseId})">
+                                    <td style="text-align:center;">
+                                        <input type="checkbox" class="course-checkbox" data-id="${courseId}"
+                                            ${selectedCourses.has(courseId) ? 'checked' : ''}
+                                            onclick="event.stopPropagation(); toggleCourse(${courseId})">
+                                    </td>
+                                    <td><strong style="color:var(--primary);">${courseCode}</strong></td>
+                                    <td>${courseName}</td>
+                                    <td><span style="background:var(--primary-lighter);padding:2px 10px;border-radius:12px;font-weight:600;font-size:12px;">${c.credit_hours}</span></td>
+                                    <td>${programmeName}</td>
+                                    <td>${lecturerName}</td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+            } catch (error) {
+                console.error('Failed to load courses:', error);
+                showError('courses-container', 'bi-exclamation-triangle', 'Failed to Load Courses', 
+                    error.message || 'Unable to fetch course list. Please try again or contact support.');
+            }
+        }
+
+        function toggleCourse(courseId) {
+            if (selectedCourses.has(courseId)) {
+                selectedCourses.delete(courseId);
+            } else {
+                selectedCourses.add(courseId);
+            }
+            updateSelection();
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('select-all');
+            if (selectAll.checked) {
+                allCourses.forEach(c => {
+                    const courseId = c.course_id;
+                    selectedCourses.add(courseId);
+                });
+            } else {
+                selectedCourses.clear();
+            }
+            updateSelection();
+        }
+
+        function updateSelection() {
+            document.getElementById('selected-count').textContent = selectedCourses.size;
+            document.getElementById('btn-register').disabled = selectedCourses.size === 0;
+
+            // Update checkboxes
+            document.querySelectorAll('.course-checkbox').forEach(cb => {
+                const id = parseInt(cb.dataset.id);
+                cb.checked = selectedCourses.has(id);
+            });
+
+            // Highlight selected rows
+            allCourses.forEach(c => {
+                const courseId = c.course_id;
+                const row = document.getElementById(`row-${courseId}`);
+                if (row) {
+                    row.style.background = selectedCourses.has(courseId) ? 'var(--primary-lighter)' : '';
+                }
+            });
+
+            // Update select all checkbox
+            const selectAll = document.getElementById('select-all');
+            if (selectAll) {
+                selectAll.checked = selectedCourses.size === allCourses.length && allCourses.length > 0;
+            }
+        }
+
+        async function registerCourses() {
+            if (selectedCourses.size === 0) return;
+
+            const btn = document.getElementById('btn-register');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Registering...';
+
+            try {
+                const data = await api.post('/registration/register', {
+                    courses: Array.from(selectedCourses)
+                });
+
+                showToast(data.message || 'Registration successful! Awaiting approval.', 'success');
+                selectedCourses.clear();
+                updateSelection();
+                await loadCourses();
+
+            } catch (error) {
+                showToast(error.message || 'Registration failed. Please try again.', 'error');
+                console.error('Registration error:', error);
+            } finally {
+                btn.disabled = selectedCourses.size === 0;
+                btn.innerHTML = '<i class="bi bi-check2-circle"></i> Register Selected';
+            }
+        }
+
+        // Helper function to show error state
+        function showError(containerId, icon, title, message) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi ${icon}"></i>
+                    <h4>${title}</h4>
+                    <p>${message}</p>
+                    <button class="btn-primary-custom" onclick="loadCourses()" style="margin-top:16px;">
+                        <i class="bi bi-arrow-clockwise"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
